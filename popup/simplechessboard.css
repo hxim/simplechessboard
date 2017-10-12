@@ -37,7 +37,7 @@ li {
 .cb {
     position: relative;
     font-size: 14px;
-    color: white;
+    color: #ffffff;
     font-weight: 600;
     text-align: center;
 }
@@ -59,8 +59,9 @@ li {
     border-width: 2px;
     border-style: solid;
     border-color: rgba(255, 255, 255, 0.2) black black rgba(255, 255, 255, 0.2);
-    color: white;
+    color: #ffffff;
     font-weight: 600;
+    border-collapse: collapse;
 }
 .cbTable td {
     min-width: 16px;
@@ -131,13 +132,13 @@ li {
     outline: none;
 }
 #simpleSearch #searchInput.placeholder {
-    color: #999;
+    color: #999999;
 }
 #simpleSearch #searchInput:-ms-input-placeholder {
-    color: #999;
+    color: #999999;
 }
 #simpleSearch #searchInput:-moz-placeholder {
-    color: #999;
+    color: #999999;
 }
 #simpleSearch #searchInput::-webkit-search-decoration,
 #simpleSearch #searchInput::-webkit-search-cancel-button,
@@ -184,7 +185,7 @@ li {
     position: absolute;
     top: 0;
     right: 0;
-    background-color: transparent;
+    background-color: #ffffff;
     width: 16px;
     height: 16px;    
     padding: 2px 4px 6px 4px;
@@ -250,7 +251,7 @@ li {
     height: 330px;
     top: 80px;
     left: 380px;
-    color: white;
+    color: #ffffff;
     background-color: #000000;
     border-width: 2px;
     border-style: solid;

@@ -57,6 +57,7 @@ function command(text) {
   } else if (text.toLowerCase().indexOf("depth ") == 0) { 
     refreshMoves();
     _engine.depth = Math.min(128,Math.max(0,parseInt(text.toLowerCase().replace("depth ", ""))));
+    if (isNaN(_engine.depth)) _engine.depth = 10;
     evalAll();
     historySave();
 
@@ -219,6 +220,7 @@ function showEvals() {
     node2.className = "san";
     var node3 = document.createElement("SPAN");
     node3.className = "eval";
+    if (_curmoves[i].depth > 0) node3.title = "depth = "+_curmoves[i].depth;
     
     var text = getEvalText(_curmoves[i].eval, false);
     if (text.indexOf(".") >= 0) {
@@ -616,8 +618,8 @@ function historyButtons() {
 }
 function historySave() {
   var data = { _historyindex : _historyindex, _history : _history, _fen : document.getElementById('fen').innerHTML, _depth : _engine.depth };
-  if (typeof browser !== 'undefined') browser.storage.local.set(data);
-  if (typeof chrome !== 'undefined') chrome.storage.local.set(data);
+  if (typeof browser !== 'undefined' && typeof browser.storage !== 'undefined') browser.storage.local.set(data);
+  if (typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined') chrome.storage.local.set(data);
 }
 function historyLoad() {
   var loadHistory = null;
@@ -634,8 +636,8 @@ function historyLoad() {
     historyButtons();
     showBoard();
   }
-  if (typeof browser !== 'undefined') loadHistory = browser.storage.local.get(null).then((res) => load(rec));
-  if (typeof chrome !== 'undefined') loadHistory = chrome.storage.local.get(null, load);
+  if (typeof browser !== 'undefined' && typeof browser.storage !== 'undefined') loadHistory = browser.storage.local.get(null).then((res) => load(rec));
+  if (typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined') loadHistory = chrome.storage.local.get(null, load);
 }
 function historyAdd(fen) {
   if (_historyindex >= 0 && _history[_historyindex] == fen) return;
@@ -783,25 +785,40 @@ function chessboardOnDblClick(e) {
 }
 
 function loadEngine() {
-  var worker = new Worker("stockfish.js");
-  var engine = {ready: false, depth: 10};
+  var wasmSupported = typeof WebAssembly === 'object' && WebAssembly.validate(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
+  var worker = new Worker(wasmSupported ? 'stockfish.wasm.js' : 'stockfish.js');
+  var engine = {ready: false, depth: 10, lastnodes: 0};
   worker.onmessage = function (e) { if (engine.messagefunc) engine.messagefunc(e.data); }
   engine.send = function send(cmd, message) {
     cmd = String(cmd).trim();
     engine.messagefunc = message;
     worker.postMessage(cmd);
   };
-  engine.eval = function eval(fen, done) {
+  engine.eval = function eval(fen, done, info) {
     engine.send("position fen " + fen);
     engine.send("go depth "+ engine.depth, function message(str) {
-      var matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+).*/);
+      var matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+) .*nodes (\d+) .*pv (.+)/);
+      if (!matches) matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+).*/);
       if (matches) {
+        if (matches.length > 4) {
+          var nodes = Number(matches[4]);
+          if (nodes < engine.lastnodes || engine.lastnodes == 0)  engine.fen = fen;
+          engine.lastnodes = nodes;
+        }
+        var depth = Number(matches[1]);
         var type = matches[2];
         var score = Number(matches[3]);
-        if (type == "cp") engine.score = score;
-        else if (type == "mate") engine.score = (1000000 - Math.abs(score)) * (score <= 0 ? -1 : 1);
-      } 
-      if (str.indexOf("bestmove") >= 0) done(str);
+        if (type == "mate") score = (1000000 - Math.abs(score)) * (score <= 0 ? -1 : 1);
+        engine.score = score;
+        if (matches.length > 5) {
+          var pv = matches[5].split(" ");
+          if (info != null && depth > 10 && engine.fen == fen) info(depth, score, pv[0]);
+        }
+      }
+      if (str.indexOf("bestmove") >= 0 || str.indexOf("mate 0") >= 0) {
+        if (engine.fen == fen) done(str);
+        engine.lastnodes = 0;
+      }
     });
   };
   engine.send("uci", function onuci(str) {
@@ -831,6 +848,23 @@ function evalNext() {
     }
   }
 }
+function applyEval(m, s, d) {
+  if (s == null || m.length < 4) return;
+  for (var i=0; i<_curmoves.length; i++) {
+    if (_curmoves[i].move.from.x == "abcdefgh".indexOf(m[0]) &&
+        _curmoves[i].move.from.y == "87654321".indexOf(m[1]) &&
+        _curmoves[i].move.to.x == "abcdefgh".indexOf(m[2]) &&
+        _curmoves[i].move.to.y == "87654321".indexOf(m[3]))
+    {
+      if (d > _curmoves[i].depth) {
+        _curmoves[i].eval = _curmoves[i].w ? -s : s;
+        _curmoves[i].depth = d;
+        showEvals();
+      }
+      break;
+    }
+ }
+}
 function evalAll() {
   if (_curmoves.length == 0) return;
   if (_engine == null || !_engine.ready) {
@@ -838,25 +872,15 @@ function evalAll() {
     return;
   }
   document.getElementById("moves").scrollTo(0, 0);
+  var fen = document.getElementById('fen').innerHTML;
   _engine.send("stop");
   _engine.score = null;
-  _engine.eval(document.getElementById('fen').innerHTML, function done(str) {
+  _engine.eval(fen, function done(str) {
     var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
-    if (matches && matches.length > 1 && matches[1].length>=4) {
-      for (var i=0; i<_curmoves.length; i++)
-        if (_curmoves[i].move.from.x == "abcdefgh".indexOf(matches[1][0]) &&
-            _curmoves[i].move.from.y == "87654321".indexOf(matches[1][1]) &&
-            _curmoves[i].move.to.x == "abcdefgh".indexOf(matches[1][2]) &&
-            _curmoves[i].move.to.y == "87654321".indexOf(matches[1][3])) {
-          if (_engine.score != null) {
-            _curmoves[i].eval = _curmoves[i].w ? -_engine.score : _engine.score;
-            _curmoves[i].depth = _engine.depth - 1;
-            showEvals();
-          }
-          break;
-        }
-    }
+    if (matches && matches.length > 1) applyEval(matches[1], _engine.score, _engine.depth - 1);
     evalNext();
+  }, function info(depth, score, pv0) {
+    applyEval(pv0, score, depth - 1);
   });
 }
 
