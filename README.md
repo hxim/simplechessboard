@@ -13,7 +13,7 @@ Features:
 * browse game history
 * detect and visualize all legal moves
 * detect checkmate or stalemate
-* analyze position with javascript version of Stockfish6 ([stockfish.js](https://github.com/nmrugg/stockfish.js))
+* analyze position with javascript version of Stockfish ([stockfish.js](https://github.com/niklasf/stockfish.js))
 
 When the user inserts position quick evaluation for all legal moves is calculated.
 The user can setup position manually or by loading from FEN or PGN.
@@ -34,6 +34,7 @@ list next to the chessboard and directly on the chessboard.
 - <a href="https://github.com/official-stockfish/Stockfish">The Stockfish team</a>
 - <a href="https://github.com/exoticorn/stockfish-js">exoticorn</a>
 - <a href="https://github.com/nmrugg/stockfish.js">nmrugg</a>
+- <a href="https://github.com/niklasf/stockfish.js">niklasf</a>
 
 ### License
 
