@@ -829,9 +829,10 @@ function loadEngine() {
       var matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+) .*nodes (\d+) .*pv (.+)/);
       if (!matches) matches = str.match(/depth (\d+) .*score (cp|mate) ([-\d]+).*/);
       if (matches) {
+        if (engine.lastnodes == 0) engine.fen = fen;
         if (matches.length > 4) {
           var nodes = Number(matches[4]);
-          if (nodes < engine.lastnodes || engine.lastnodes == 0)  engine.fen = fen;
+          if (nodes < engine.lastnodes) engine.fen = fen;
           engine.lastnodes = nodes;
         }
         var depth = Number(matches[1]);
