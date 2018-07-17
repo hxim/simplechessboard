@@ -50,7 +50,7 @@ li {
     font-weight: bold;
     line-height: 40px;
 }
-.cbTable {
+#cbTable {
     width: 100%;
     font-size: 14px;
     padding: 0;
@@ -63,10 +63,10 @@ li {
     font-weight: 600;
     border-collapse: collapse;
 }
-.cbTable td {
+#cbTable td {
     min-width: 16px;
 }
-.cbTable td.cbCell {
+#cbTable td.cbCell {
     padding: 0;
     vertical-align: top;
     border-width: 2px;
@@ -219,6 +219,10 @@ li {
 .on svg {
     fill: #e3e6e7;
     position: absolute;
+}
+#buttonFlip:hover {
+    background-color: #000000;
+    cursor: pointer;
 }
 
 /* Status bar */
