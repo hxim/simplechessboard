@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html><head>
+<html lang="en"><head>
     <meta charset="utf-8">
     <link rel="stylesheet" href="simplechessboard.css"/>
     <link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-32.png">
@@ -18,10 +18,14 @@
     <div id="buttonBack" class="off" title="Go back"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M15 7H3.414l4.293-4.293a1 1 0 0 0-1.414-1.414l-6 6a1 1 0 0 0 0 1.414l6 6a1 1 0 0 0 1.414-1.414L3.414 9H15a1 1 0 0 0 0-2z"/></svg></div>
     <div id="buttonForward" class="off" title="Go forward"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M15.707 7.293l-6-6a1 1 0 0 0-1.414 1.414L12.586 7H1a1 1 0 0 0 0 2h11.586l-4.293 4.293a1 1 0 1 0 1.414 1.414l6-6a1 1 0 0 0 0-1.414z"/></svg></div>
     <div id="buttonRefresh" class="on" title="Refresh"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M15 1a1 1 0 0 0-1 1v2.418A6.995 6.995 0 1 0 8 15a6.954 6.954 0 0 0 4.95-2.05 1 1 0 0 0-1.414-1.414A5.019 5.019 0 1 1 12.549 6H10a1 1 0 0 0 0 2h5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"/></svg></div>
-    <div id="buttonStm" class="white" title="Change side to move">loading...</div>
+    <div id="infoWrapper" class="white" title="Info">loading...</div>
+    <div id="buttonRevert" class="off" title="Revert changes"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="16" height="16" fill="currentColor"><path class="shp0" d="M431.85,79.13l-433.36,433.37l433.37,431.64v-273.34c463.64,-39.79 591.66,197.22 591.66,197.22c0,0 0,-431.63 -591.66,-512.94z" /></svg></div>
+    <div id="buttonWindow" class="on" title="Open in new window"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="16" height="16" fill="currentColor"><path class="shp0" d="M86.13 895.2L86.13 554.13L682.07 554.13L682.07 895.2L86.13 895.2ZM767.33 554.13L767.33 384.53L341.93 384.53L341.93 214L937.87 214L937.87 554.13L767.33 554.13ZM1023.13 43.46L256.67 43.46L256.67 384.53L0.87 384.53L0.87 980.46L767.33 980.46L767.33 639.39L1023.13 639.39L1023.13 43.46Z" /></svg></div>
+    <div id="buttonGraph" class="on" title="Evaluation graph"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="4 4 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" /></svg></div>
+
     <div id="boardWrapper">
-        <table id="cbTable" cellspacing="0" cellpadding="0"><tbody>
-            <tr><td></td><td>a</td><td>b</td><td>c</td><td>d</td><td>e</td><td>f</td><td>g</td><td>h</td><td></td></tr>
+        <table id="cbTable"><tbody>
+            <tr><td></td><td>a</td><td>b</td><td>c</td><td>d</td><td>e</td><td>f</td><td>g</td><td>h</td><td><div id="buttonStm" class="white" title="Change side to move"><div></div></div></td></tr>
             <tr><td>8</td><td colspan="8" rowspan="8" class="cbCell"><div id="chessboard1" class="cb"></div></td><td>8</td></tr>
             <tr><td>7</td><td>7</td></tr><tr><td>6</td><td>6</td></tr><tr><td>5</td><td>5</td></tr><tr><td>4</td><td>4</td></tr>
             <tr><td>3</td><td>3</td></tr><tr><td>2</td><td>2</td></tr><tr><td>1</td><td>1</td></tr>
@@ -29,6 +33,13 @@
         </tbody></table>
     </div>
     <div id="moves"></div>
+    <div id="arrowWrapper1">
+        <svg height="100%" width="100%"><defs><marker id="markerArrow1" markerWidth="13" markerHeight="13" orient="auto" refX="3" refY="3"><path d="M1,1 L1,5 L4,3 Z" style="fill: #000000;"></path></marker></defs><line style="stroke:#000000;stroke-width:6;marker-end:url(#markerArrow1);" y2="0" y1="0" x1="0" x2="0"></line></svg>
+    </div>
+    <div id="arrowWrapper2">
+        <svg height="100%" width="100%"><defs><marker id="markerArrow2" markerWidth="13" markerHeight="13" orient="auto" refX="3" refY="3"><path d="M1,1 L1,5 L4,3 Z"></path></marker></defs><line style="stroke-width:6;marker-end:url(#markerArrow2);" y2="0" y1="0" x1="0" x2="0"></line></svg>
+    </div>
+    <div id="graphWrapper"><canvas id="graph">Your browser does not support the HTML5 canvas tag.</canvas></div>
     <div id="status" style="display:none;"></div>
 </div>
 <script src="simplechessboard.js"></script>

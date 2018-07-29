@@ -27,12 +27,16 @@ li {
 
 #boardWrapper {
     position: absolute;
-    width: 360px;
-    height: 368px;
+    width: 356px;
+    height: 364px;
     top: 46px;
     left: 10px;
     text-align: center;
     overflow: hidden;
+    border-width: 2px;
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.2) black black rgba(255, 255, 255, 0.2);
+    background-color: #384359;
 }
 .cb {
     position: relative;
@@ -45,26 +49,25 @@ li {
     position: absolute;
     width: 40px;
     height: 40px;
-    background-repeat: none;
+    background-repeat: no-repeat;
     background-position: center;
     font-weight: bold;
     line-height: 40px;
 }
 #cbTable {
-    width: 100%;
     font-size: 14px;
     padding: 0;
     margin: auto;
-    background-color: #384359;
-    border-width: 2px;
-    border-style: solid;
-    border-color: rgba(255, 255, 255, 0.2) black black rgba(255, 255, 255, 0.2);
     color: #ffffff;
     font-weight: 600;
     border-collapse: collapse;
 }
 #cbTable td {
     min-width: 16px;
+    line-height: 18px;
+    height: 20.5px;
+    padding: 0;
+    margin: 0;
 }
 #cbTable td.cbCell {
     padding: 0;
@@ -124,7 +127,7 @@ li {
 #simpleSearch #searchInput {
     font-family: Segoe UI;
     width: 100%;
-    padding: 2px 4px 2px 4px;
+    padding: 3px 4px 2px 4px;
     font-size: 14px;
     -webkit-appearance: textfield;
 }
@@ -161,25 +164,17 @@ li {
     top: 10px;
     left: 62px;
 }
-#buttonStm {
-    position: absolute;
+#buttonRevert {
     top: 46px;
-    left: 380px;
-    height: 24px;
-    width: 208px;
-    text-align: center;
-    cursor: pointer;
-    font-size: 14px;
-    border: 1px solid #596066;
+    left: 496px;
 }
-#buttonStm.white,
-#buttonStm.white:hover {
-    background-color: #ffffff !important;
+#buttonWindow {
+    top: 46px;
+    left: 530px;
 }
-#buttonStm.black,
-#buttonStm.black:hover {
-    background-color: #000000 !important;
-    color: #ffffff !important;
+#buttonGraph {
+    top: 46px;
+    left: 564px;
 }
 #buttonGo {
     position: absolute;
@@ -196,6 +191,9 @@ li {
 }
 #buttonGo {
     fill: #5e5e5e;
+}
+.down {
+    background-color: #999da1;
 }
 .on,
 .off {
@@ -220,9 +218,35 @@ li {
     fill: #e3e6e7;
     position: absolute;
 }
-#buttonFlip:hover {
-    background-color: #000000;
+#buttonFlip {
+    line-height: 18px;
+    height: 20.5px;
     cursor: pointer;
+}
+#buttonFlip:hover {
+    background-color: rgba(117, 131, 142, 0.4);
+}
+#buttonStm {
+    width: 9px;
+    height: 9px;
+    padding: 5.75px 4px;
+    cursor: pointer;
+}
+#buttonStm div {
+    width: 9px;
+    height: 9px;
+    border-radius: 4.5px;
+}
+#buttonStm:hover {
+    background-color: rgba(117, 131, 142, 0.4);
+}
+#buttonStm.white div,
+#buttonStm.white:hover div {
+    background-color: #ffffff;
+}
+#buttonStm.black div,
+#buttonStm.black:hover div {
+    background-color: #000000;
 }
 
 /* Status bar */
@@ -244,6 +268,24 @@ li {
     bottom: 0;
 }
 
+/* Info */
+
+#infoWrapper {
+    position: absolute;
+    top: 46px;
+    left: 380px;
+    height: 24px;
+    width: 104px;
+    text-align: center;
+    font-size: 14px;
+    border: 1px solid #596066;
+    border-radius: 2px;
+    line-height: 20px;
+    background-color: black;
+    color: white;
+    font-weight: 600;
+}
+
 /* Move list */
 
 #moves {
@@ -252,8 +294,8 @@ li {
     font-weight: 600;
     position: absolute;
     width: 206px;
-    height: 330px;
-    top: 80px;
+    height: 328px;
+    top: 82px;
     left: 380px;
     color: #ffffff;
     background-color: #000000;
@@ -262,6 +304,10 @@ li {
     border-color: rgba(255, 255, 255, 0.2) black black rgba(255, 255, 255, 0.2);
     overflow-y: scroll;
 }
+#container.graph #moves {
+    height: 242px;
+}
+
 .line:nth-child(even) {
     background-color: rgba(117, 131, 142, 0.2);
 }
@@ -297,4 +343,59 @@ li {
 }
 .line:hover {
     background-color: rgba(117, 131, 142, 0.4);
+}
+
+/* Graph */
+#graphWrapper {
+    width: 0;
+    height: 0;
+    opacity: 0;
+    overflow: hidden;
+}
+#container.graph #graphWrapper {
+    display: block;
+    line-height: 22px;
+    font-size: 14px;
+    font-weight: 600;
+    width: 412px;
+    height: 151px;
+    bottom: 10px;
+    right: 10px;
+    color: #ffffff;
+    border-width: 4px;
+    border-style: solid;
+    border-color: rgba(255, 255, 255, 0.2) black black rgba(255, 255, 255, 0.2);
+    background-color: #000000;
+    position: absolute;
+    overflow: hidden;
+    opacity: 1;
+    transform: scale(0.5,0.5);
+    transform-origin: bottom right;
+}
+#container.graph #graphWrapper:hover {
+    transform: scale(1,1);
+    transition: transform 0.1s ease;
+}
+
+#graph {
+    padding-bottom:0.5px;
+    display: none;
+}
+#container.graph #graph {
+    display: block;
+    background-color: #f0f0f0;
+    background: linear-gradient(to bottom right, rgba(225,225,217,1), rgba(255,255,255,1));
+}
+
+/* Arrow */
+
+#arrowWrapper1, #arrowWrapper2 {
+    position: absolute;
+    pointer-events: none;
+    display: none;
+    filter: drop-shadow(-1px -1px 1px white) drop-shadow(1px 1px 1px black);
+    opacity: 0.5;
+}
+#arrowWrapper1 svg, #arrowWrapper2 svg {
+    opacity: 0.66;
 }

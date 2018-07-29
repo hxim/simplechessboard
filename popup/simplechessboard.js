@@ -1,7 +1,8 @@
 var _engine, _depth = 10, _curmoves = [];
-var _history = ["rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"], _historyindex = 0;
+const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+var _history = [[START]], _history2 = null, _historyindex = 0;
 var _dragElement = null, _dragActive = false, _startX, _startY, _dragCtrl, _clickFrom, _clickFromElem;
-var _newPiece = '-', _flip = false, _nohash = true;
+var _newPiece = '-', _flip = false, _nohash = true, _arrow = false, _graph = false;
 
 function setElemText(elem, value) {
   while(elem.firstChild) elem.removeChild(elem.firstChild);
@@ -21,16 +22,31 @@ function getCurFEN() {
 }
 
 function command(text) {
-  if (text.indexOf('<div class="moves">') >= 0) {
-    text = text.substring(text.indexOf('<div class="moves">'));
-    text = text.substring('<div class="moves">'.length,text.indexOf('</div>'));
-    text = text.replace(/<index[^>]*>/g,"").replace(/<\/index>/g,".").replace(/<move[^>]*>/g,"").replace(/<\/move>/g," ")
-           .replace(/<div.*/g,"").replace(/\?/g,"x");
+  var mvdivs = ['<div class="moves">', '<div class="tview2 column">','<div class="extension-item Moves">'];
+  for (var i = 0; i < mvdivs.length; i++) {
+    if (text.indexOf(mvdivs[i]) >= 0) {
+      text = text.substring(text.indexOf(mvdivs[i]));
+      text = text.substring(mvdivs[i].length,text.indexOf('</div>'));
+      if (i == 2) {
+        text = text.replace(/<dt>\s*(<span[^>]*>)?\s*([^<\s]*)\s*(<\/span>)?\s*<\/dt>/g,"<index>$2</index>")
+              .replace(/<span class="move">\s*([^<\s]*)\s*<\/span>/g,"<move>$1</move>")
+      } else {
+        text = text.replace(/<interrupt>((?!<\/interrupt>).)*<\/interrupt>/g,"")
+              .replace(/<move(\s*p="[^"]*")?[^>]*>/g,"<move>")
+              .replace(/<\/?san>|<eval>[^<]*<\/eval>|<glyph[^<]*<\/glyph>|<move>\.\.\.<\/move>/g,"")
+              .replace(/\?/g,"x");
+      }
+      text = text
+             .replace(/{|}/g,"")
+             .replace(/(<index[^>]*>)/g,"{").replace(/<\/index>/g,".}")
+             .replace(/<move>/g,"{").replace(/<\/move>/g," }")
+             .replace(/(^|})[^{]*($|{)/g,"");
+    }
   }
   if (text.split("/").length == 8 && text.split(".").length == 1) {
     pos = parseFEN(text);
     setCurFEN(generateFEN(pos));
-    _history = [getCurFEN()]; _historyindex = 0;
+    _history = [[getCurFEN()]]; _historyindex = 0;
     historyMove(0);
   } else if (text.split(".").length > 1) {
     text = " " + text.replace(/\./g," ").replace(/(\[FEN [^\]]+\])+?/g, function ($0, $1) { return $1.replace(/\[|\]|"/g,"").replace(/\s/g,"."); });
@@ -39,35 +55,35 @@ function command(text) {
     text = text.replace(/0-0-0/g, "O-O-O").replace(/0-0/g, "O-O").replace(/(1\-0|0\-1|1\/2\-1\/2)/g," * ")
                .replace(/\s\d+/g, " ").replace(/\$\d+/g, "").replace(/\?/g,"");
     var moves = text.replace(/\s/g, " ").replace(/ +/g, " ").trim().split(' ');
-    var init = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    var pos = parseFEN(init);
-    _history = [init]; _historyindex = 0; gm=0;
+    var pos = parseFEN(START);
+    var oldhistory = JSON.parse(JSON.stringify(_history));
+    _history = [[START]]; _historyindex = 0; gm=0;
     for (var i = 0; i < moves.length; i++) {
       if (moves[i].length == 0) continue;
       if ("*".indexOf(moves[i][0]) == 0) {
         if (i < moves.length - 1) {
-          pos = parseFEN(init);
-          historyAdd(generateFEN(pos));
+          pos = parseFEN(START);
+          historyAdd(generateFEN(pos), oldhistory);
           gm++;
         }
         continue;
       } else if (moves[i].indexOf("FEN.") == 0) {
         pos = parseFEN(moves[i].substring(4).replace(/\./g, " "));
-        if (_history[_historyindex] == init) _historyindex--;
-        historyAdd(generateFEN(pos));
+        if (_history[_historyindex][0] == START) _historyindex--;
+        historyAdd(generateFEN(pos), oldhistory);
         continue;
       }
-      if (moves[i] == "--") { pos.w = !pos.w; historyAdd(generateFEN(pos)); continue; }
+      if (moves[i] == "--") { pos.w = !pos.w; historyAdd(generateFEN(pos), oldhistory); continue; }
       var move = parseMove(pos, moves[i]);
       if (move == null) { alert("incorrect move: "+moves[i] + " "+ gm); break; }
       pos = doMove(pos, move.from, move.to, move.p);
-      historyAdd(generateFEN(pos));
+      historyAdd(generateFEN(pos), oldhistory, move);
     }
     setCurFEN(generateFEN(pos));
     historyMove(0);
   } else if (text.toLowerCase() == "reset") {
-    setCurFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    _history = [getCurFEN()]; _historyindex = 0;
+    setCurFEN(START);
+    _history = [[getCurFEN()]]; _historyindex = 0;
     historyMove(0);
   } else if (text.toLowerCase() == "colorflip") {
     setCurFEN(generateFEN(colorflip(parseFEN(getCurFEN()))));
@@ -78,17 +94,85 @@ function command(text) {
     showBoard();
     historySave();
   } else if (text.toLowerCase().indexOf("depth ") == 0) { 
-    refreshMoves();
     if (_engine != null) {
-      _engine.depth = Math.min(128,Math.max(0,parseInt(text.toLowerCase().replace("depth ", ""))));
+      _engine.depth = Math.min(128,Math.max(1,parseInt(text.toLowerCase().replace("depth ", ""))));
       if (isNaN(_engine.depth)) _engine.depth = 10;
     }
+    refreshMoves();
     evalAll();
     historySave();
   } else if (text.toLowerCase() == "hash") {
     _nohash = !_nohash;
   } else if (text.toLowerCase() == "flip") {
     doFlip();
+  } else if (text.toLowerCase() == "window") {
+  
+    var encoded = "";
+    if (_history[0][0] == START) {
+      var gi = "";
+      for (var i = 1; i < _history.length; i++) {
+        var pos = parseFEN(_history[i-1][0]);
+        var moves = genMoves(pos);
+        var mindex = -1;
+        for (var j = 0; j < moves.length; j++) {
+          var move = moves[j];
+          var pos2 = doMove(pos, move.from, move.to, move.p);
+          if (generateFEN(pos2) == _history[i][0]) mindex = j;
+        }
+        if (mindex < 0) { gi = ""; break; }
+        var symbols = (moves.length+1).toString(2).length, v="";
+        for (var j = 0; j < symbols; j++) v+="0";
+        var n = (mindex+1).toString(2);
+        n = v.substr(n.length) + n;
+        gi += n;
+        if (i == _history.length-1) gi += v;
+      }
+      var cur = "";
+      for (var i = 0; i < gi.length; i++) {
+        cur += gi[i];
+        if (i == gi.length-1) while (cur.length < 6) cur += "0";
+        if (cur.length == 6) {
+          encoded += "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"[parseInt(cur, 2)];
+          cur = "";
+        }
+      }
+    }
+    var url = [location.protocol, '//', location.host, location.pathname].join('');
+    if (encoded.length > 0) window.open(url + "?x=~" + encoded, "_blank");
+    else if (getCurFEN() == START) window.open(url, "_blank");
+    else window.open(url + "?x=" + getCurFEN(), "_blank");
+  } else if (text[0] == "~") {
+    var pos = parseFEN(START);
+    var oldhistory = JSON.parse(JSON.stringify(_history));
+    _history = [[START]]; _historyindex = 0;
+    var gi = "";
+    for (var i = 1; i < text.length; i++) {
+      var n = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_".indexOf(text[i]).toString(2);
+      gi += "000000".substr(n.length) + n;
+    }
+    var i = 0;
+    while (i < gi.length) {
+      var moves = genMoves(pos);
+      var symbols = (moves.length+1).toString(2).length, cur = "";
+      for (var j = 0; j < symbols; j++) { cur += (i < gi.length ? gi[i] : "0"); i++; }
+      var n = parseInt(cur, 2);
+      if (n == 0 || n >= moves.length + 1) break;
+      var move = moves[n-1];
+      pos = doMove(pos, move.from, move.to, move.p);
+      historyAdd(generateFEN(pos), oldhistory, move);
+    }
+    setCurFEN(generateFEN(pos));
+    historyMove(0);
+  } else if (text.toLowerCase() == "revert") {
+    if (_history2 != null) {
+      _historyindex = _history2[0];
+      _history = _history2[1];
+      _history2 = null;
+      setCurFEN(_history[_historyindex][0]);
+      historyMove(0);
+      document.getElementById('buttonRevert').className = "off";
+      document.getElementById('buttonRevert').onclick = null;
+    }
   }
 }
 function dosearch() {
@@ -126,13 +210,19 @@ function getEvalText(e, s) {
   }
   return (e / 100).toFixed(2);
 }
-function showStatus(text) {
+function showStatus(text, answer) {
   var state = text.length > 0;
   var status = document.getElementById("status");
   setElemText(status, state ? text : "");
   status.style.display = state ? "" : "none";
+  if (answer != null && answer.length == 4) {
+    var move = {from:{x:"abcdefgh".indexOf(answer[0]),y:"87654321".indexOf(answer[1])},
+                to:{x:"abcdefgh".indexOf(answer[2]),y:"87654321".indexOf(answer[3])}};
+    showArrow1(move);
+  } else setArrow(_arrow);
 }
 function showLegalMoves(from) {
+  setArrow(from == null);
   var pos = parseFEN(getCurFEN());
   var elem = document.getElementById('chessboard1');
   for (var i=0; i<elem.children.length; i++) {
@@ -150,25 +240,42 @@ function showLegalMoves(from) {
     if (from == null) continue;
     if (from.x==x && from.y==y) { div.className += " h0"; _clickFromElem = div; }
     else if (isLegal(pos, from, {x:x,y:y})) {
-        var text = "", san = "";
+        var text = "", san = "", answer = null;
         for (var j = 0; j < _curmoves.length; j++) {
           if (_curmoves[j].move.from.x == from.x && _curmoves[j].move.from.y == from.y
            && _curmoves[j].move.to.x == x && _curmoves[j].move.to.y == y) {
             text = getEvalText(_curmoves[j].eval, true);
             san = _curmoves[j].san;
+            answer = _curmoves[j].answer;
             break;
           }
         }
         div.className += " h1";
         setElemText(div, text);
         div.status = san + (text.length > 0 ? " " + text : "");
-        div.onmouseover = function() {showStatus(this.status);};
+        div.answer = answer == null ? "" : answer;
+        div.onmouseover = function() {showStatus(this.status, this.answer);};
         div.onmouseout = function() {showStatus("");};
     }
   }
   _clickFrom = from;
 }
-function showBoard(noeval) {
+function setArrow(state) {
+  _arrow = state;
+  if (_arrow && _curmoves.length > 0 && _curmoves[0].eval != null) showArrow1(_curmoves[0].move); else showArrow1();
+}
+function repaintLastMoveArrow() {
+  var lastmove = (getCurFEN() == _history[_historyindex][0] && _history[_historyindex].length > 2) ? _history[_historyindex][2] : null;
+  if (lastmove != null) { 
+    var elem = document.getElementById("arrowWrapper2");
+    elem.children[0].children[0].children[0].children[0].style.fill
+    = elem.children[0].children[1].style.stroke
+    = getGraphPointColor(_historyindex);
+  }
+  showArrow2(lastmove);
+}
+
+function showBoard(noeval, refreshhistory) {
   var pos = parseFEN(getCurFEN());
   var elem = document.getElementById('chessboard1');
   while (elem.firstChild) elem.removeChild(elem.firstChild);
@@ -187,28 +294,33 @@ function showBoard(noeval) {
 
   if (!noeval) {
     refreshMoves();
+    if (refreshhistory) for (var i = 0; i < _history.length; i++) if (_history[i].length > 1 && _history[i][1] != null) _history[i][1].depth = -1;
     evalAll();
   }
-    document.getElementById('buttonStm').className = pos.w ? "white" : "black";
-    var matecheck = _curmoves.length == 0, illegal = false;
-    if (matecheck) illegal = checkPosition(pos).length > 0;
-    if (matecheck && !illegal) matecheck = pos.w && isWhiteCheck(pos) || !pos.w && isWhiteCheck(colorflip(pos));
-    setElemText(document.getElementById('buttonStm'), (pos.w ? "white" : "black")
-      + " to move"
-      + (_curmoves.length == 0 && illegal ? "" :
-         _curmoves.length == 0 && matecheck ? " (checkmate)" :
-         _curmoves.length == 0 && !matecheck ? " (stalemate)" :
-         _curmoves.length == 1 ? " (1 legal move)" :
-         " (" + _curmoves.length + " legal moves)"));
+  document.getElementById('buttonStm').className = pos.w ? "white" : "black";
+  var matecheck = _curmoves.length == 0, illegal = false;
+  if (matecheck) illegal = checkPosition(pos).length > 0;
+  if (matecheck && !illegal) matecheck = pos.w && isWhiteCheck(pos) || !pos.w && isWhiteCheck(colorflip(pos));
+  setElemText(document.getElementById('infoWrapper'),
+       _curmoves.length == 0 && illegal ? "illegal" :
+       _curmoves.length == 0 && matecheck ? "checkmate" :
+       _curmoves.length == 0 && !matecheck ? "stalemate" :
+       _curmoves.length == 1 ? "1 move" :
+       _curmoves.length + " moves");
+  setArrow(true);
+  
+  repaintLastMoveArrow();
 }
 
 function highlightMove(index, state) {
+  setArrow(!state);
   if (_dragElement != null) return;
   var elem = document.getElementById('chessboard1');
   var x1 = _curmoves[index].move.from.x;
   var y1 = _curmoves[index].move.from.y;
   var x2 = _curmoves[index].move.to.x;
   var y2 = _curmoves[index].move.to.y;
+  var text = getEvalText(_curmoves[index].eval,true);
   for (var i=0; i<elem.children.length; i++) {
     var div = elem.children[i];
     if (div.tagName != 'DIV') continue;
@@ -220,10 +332,12 @@ function highlightMove(index, state) {
     setElemText(div, "");
     if (div.className.indexOf(" h2") >= 0) c += " h2";
     if (state && x1==x && y1==y) div.className = c + " h0";
-    else if (state && x2==x && y2==y) { div.className = c + " h1"; setElemText(div, getEvalText(_curmoves[index].eval,true));}
+    else if (state && x2==x && y2==y) { div.className = c + " h1"; setElemText(div, text);}
     else div.className = c;
     div.onmouseover = null;
   }
+  if (state) showStatus("", _curmoves[index].answer);
+  else showStatus("");
 }
 function doHighlightMove(index) {
   var oldfen = getCurFEN();
@@ -231,9 +345,24 @@ function doHighlightMove(index) {
   pos = doMove(pos,_curmoves[index].move.from,_curmoves[index].move.to,_curmoves[index].move.p);
   historyAdd(oldfen);
   setCurFEN(generateFEN(pos));
-  historyAdd(getCurFEN());
+  historyAdd(getCurFEN(), null, _curmoves[index].move);
   showBoard(getCurFEN() == oldfen);
 }
+function showArrowInternal(move, wrapperId) {
+  var elem = document.getElementById(wrapperId);
+  if (move == null) { elem.style.display = "none"; return; }
+  elem.style.top = document.getElementById('chessboard1').getBoundingClientRect().top+"px";
+  elem.style.left = document.getElementById('chessboard1').getBoundingClientRect().left+"px";
+  elem.style.width = elem.style.height = (40 * 8) + "px";
+  var line = elem.children[0].children[1];
+  line.setAttribute('x1', 20+(_flip?7-move.from.x:move.from.x)*40);
+  line.setAttribute('y1', 20+(_flip?7-move.from.y:move.from.y)*40);
+  line.setAttribute('x2', 20+(_flip?7-move.to.x:move.to.x)*40);
+  line.setAttribute('y2', 20+(_flip?7-move.to.y:move.to.y)*40);
+  elem.style.display = "block";
+}
+function showArrow1(move) { showArrowInternal(move, "arrowWrapper1"); }
+function showArrow2(move) { showArrowInternal(move, "arrowWrapper2"); }
 function showEvals() {
   setElemText(document.getElementById("moves"), "");
   if (_curmoves.length > 0) {
@@ -249,8 +378,6 @@ function showEvals() {
     _curmoves.sort(sortfunc); 
   }
   for (var i=0; i<_curmoves.length;i++) {
-    var e = _curmoves[i].eval;
-    
     var node1 = document.createElement("DIV");
     node1.className = "line";
     var node2 = document.createElement("SPAN");
@@ -281,6 +408,7 @@ function showEvals() {
     node1.onmousedown = function() { doHighlightMove(this.index); };
     document.getElementById("moves").appendChild(node1);
   }
+  if (_arrow) setArrow(true);
 }
 
 function bounds(x, y) {
@@ -685,11 +813,31 @@ function historyLoad() {
   if (typeof browser !== 'undefined' && typeof browser.storage !== 'undefined') loadHistory = browser.storage.local.get(null).then((res) => load(rec));
   if (typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined') loadHistory = chrome.storage.local.get(null, load);
 }
-function historyAdd(fen) {
-  if (_historyindex >= 0 && _history[_historyindex] == fen) return;
+function historyAdd(fen, oldhistory, move) {
+  if (_historyindex >= 0 && _history[_historyindex][0] == fen) return;
+  var c = null;
+  if (oldhistory != null) {
+    for (var i = 0; i < oldhistory.length; i++) {
+      if (oldhistory[i][0] == fen && oldhistory[i].length > 1) c = oldhistory[i][1];
+    }
+  } else {
+    if (_history2 == null) {
+      _history2 = [_historyindex,JSON.parse(JSON.stringify(_history))];
+      document.getElementById('buttonRevert').className = "on";
+      document.getElementById('buttonRevert').onclick = function(e) {
+        if (e.ctrlKey) {
+          document.getElementById('buttonRevert').className = "off";
+          document.getElementById('buttonRevert').onclick = null;
+          _history2 = null;
+        } else {
+          command("revert");
+        }
+      };
+    }
+  }
   _historyindex++;
   _history.length = _historyindex;
-  _history.push(fen);
+  _history.push([fen,c,move]);
   historyButtons();
   historySave();
 }
@@ -697,22 +845,25 @@ function historyMove(v, e, ctrl) {
   if (e == null) e = window.event;
   var oldindex = _historyindex;
   if (_historyindex == _history.length - 1
-   && _history[_historyindex] != getCurFEN()) historyAdd(getCurFEN());
+   && _history[_historyindex][0] != getCurFEN()) historyAdd(getCurFEN());
   _historyindex += v
   if (_historyindex < 0) _historyindex = 0;
   if (_historyindex >= _history.length) _historyindex = _history.length - 1;
   if ((e != null && e.ctrlKey && Math.abs(v) == 1) || ctrl) _historyindex = v == 1 ? _history.length - 1 : 0;
-  if (v == 0 || (oldindex != _historyindex || getCurFEN() != _history[_historyindex])) {
-    setCurFEN(_history[_historyindex]);
+  if (v == 0 || (oldindex != _historyindex || getCurFEN() != _history[_historyindex][0])) {
+    setCurFEN(_history[_historyindex][0]);
     historyButtons();
     historySave();
     showBoard();
+    repaintGraph();
   }
 }
 
 function onMouseDown(e) {
-  if (!(e.button === 0 || e.which === 1)) {e.preventDefault(); chessboardRightClick(e); return;}
-  if (_dragElement != null) return true;
+  if (document.onmousemove == graphMouseMove) {
+    graphMouseDown(e);
+    return;
+  }
   if (e == null) e = window.event;
   var elem = target = e.target != null ? e.target : e.srcElement;
   while (target != null && target.id != 'chessboard1' && target.tagName != 'BODY') {
@@ -720,6 +871,8 @@ function onMouseDown(e) {
   }  
   if (target == null) return true;
   if (target.id != 'chessboard1') return true;
+  if (!(e.button === 0 || e.which === 1)) {e.preventDefault(); chessboardRightClick(e); return;}
+  if (_dragElement != null) return true;
   if (elem.className[2] == '-') return true;
   document.onmousemove = onMouseMove;
   document.body.focus();
@@ -767,7 +920,7 @@ function onMouseMove(e) {
   if (_dragElement == null) return;
   if (e == null) e = window.event;
   if (!_dragActive) {
-    if (Math.abs(e.clientX - _startX) < 4 && Math.abs(e.clientY - _startY) < 4) return;
+    if (Math.abs(e.clientX - _startX) < 8 && Math.abs(e.clientY - _startY) < 8) return;
     dragActivate();
   }
   _dragElement.style.left = getDragX(e.clientX, true) + 'px';
@@ -776,6 +929,7 @@ function onMouseMove(e) {
 }
 
 function onMouseUp(e) {
+  if (document.onmousemove == graphMouseMove) return;
   onMouseMove(e);
   if (!_dragActive && _clickFrom != null &&  _clickFromElem != null && _clickFromElem.className.indexOf(" h0") > 0) {
     var old = _dragElement;
@@ -790,9 +944,10 @@ function onMouseUp(e) {
       pos = doMove(pos,_clickFrom,{x:x2,y:y2});
       historyAdd(oldfen);
       setCurFEN(generateFEN(pos));
-      historyAdd(getCurFEN());
+      historyAdd(getCurFEN(), null, {from:_clickFrom,to:{x:x2,y:y2}});
       showStatus("");
       showBoard(getCurFEN() == oldfen);
+      _dragElement = null;
     }
   }
   if (_dragElement != null) {
@@ -815,7 +970,7 @@ function onMouseUp(e) {
       }
       historyAdd(oldfen);
       setCurFEN(generateFEN(pos));
-      historyAdd(getCurFEN());
+      historyAdd(getCurFEN(), null, legal ? {from:{x:x1,y:y1},to:{x:x2,y:y2}} : null);
       showBoard(getCurFEN() == oldfen);
     } else {
       if (_clickFrom != null &&  _clickFromElem != null && _clickFromElem.className.indexOf(" h0") > 0 &&
@@ -888,21 +1043,23 @@ function doFlip() {
   }
   showBoard(true);
 }
+
 function onKeyDown(e) {
   var k = e.keyCode || e.which;
   var c = String.fromCharCode(e.keyCode || e.which).replace(" ","-");
-  if (k == 106) { if (_engine != null) command("depth 10"); showBoard(false); }
-  else if (k == 107) { if (_engine != null) command("depth " + (_engine.depth+1)); showBoard(false); }
-  else if (k == 109) { if (_engine != null) command("depth " + (_engine.depth-1)); showBoard(false); }
-  else if (k == 111) { showBoard(false); }
+  if (k == 106) { if (_engine != null) command("depth 10"); showBoard(false, true); }
+  else if (k == 107) { if (_engine != null) command("depth " + Math.min(128, _engine.depth+1)); showBoard(false, true); }
+  else if (k == 109) { if (_engine != null) command("depth " + Math.max(1, _engine.depth-1)); showBoard(false, true); }
+  else if (k == 111) { showBoard(false, true); }
   else if (k == 38 || k == 37) historyMove(-1);
   else if (k == 33) historyMove(-10);
   else if (k == 36) historyMove(-1,null,true);
   else if (k == 40 || k == 39) historyMove(+1);
   else if (k == 34) historyMove(+10);
   else if (k == 35) historyMove(+1,null,true);
-  else if (k == 45) {setCurFEN("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");historySave();showBoard();}
+  else if (k == 45) {setCurFEN(START);historySave();showBoard();}
   else if (k == 46) {setCurFEN("8/8/8/8/8/8/8/8 w - - 0 0");historySave();showBoard();}
+  else if (k == 27) command("revert");
   else if ('-PNBRQK'.indexOf(c) >= 0) _newPiece = c;
   else if (c == 'C') _newPiece = _newPiece.toLowerCase();
   else if (c == 'F') command("flip");
@@ -910,11 +1067,17 @@ function onKeyDown(e) {
   else if (c == 'H') command("hash");
 }
 
+function onWheel(e) {
+  if (e.deltaY < 0) historyMove(-1);
+  if (e.deltaY > 0) historyMove(+1);
+  e.preventDefault();
+}
+
 function loadEngine() {
   var wasmSupported = typeof WebAssembly === 'object' && WebAssembly.validate(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
   try { var worker = new Worker(wasmSupported ? 'stockfish.wasm.js' : 'stockfish.js'); }
   catch(err) { return null; }
-  var engine = {ready: false, depth: 10, lastnodes: 0};
+  var engine = {ready: false, kill: false, depth: 10, lastnodes: 0};
   worker.onmessage = function (e) { if (engine.messagefunc) engine.messagefunc(e.data); }
   engine.send = function send(cmd, message) {
     cmd = String(cmd).trim();
@@ -958,6 +1121,15 @@ function loadEngine() {
   });
   return engine;
 }
+function addHistoryEval(index, score, depth) {
+  if (_history[index].length < 2 || _history[index][1] == null || (_history[index][1] != null && _history[index][1].depth < depth)) {
+    var black = _history[index][0].indexOf(" b ") > 0;
+    var ei = {score: score, depth: depth, black: black};
+    if (_history[index].length >= 2) _history[index][1] = ei;
+    else { _history[index].push(ei); _history[index].push(null); }
+    repaintGraph();
+  }
+}
 function evalNext() {
   for (var i=0; i<_curmoves.length; i++) {
     if (_curmoves[i].depth < _engine.depth) {
@@ -971,10 +1143,34 @@ function evalNext() {
         if (_engine.score != null) {
           _curmoves[i].eval = _curmoves[i].w ? _engine.score : -_engine.score;
           _curmoves[i].depth = _engine.depth;
+
+          var m = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+          _curmoves[i].answer = (m && m.length > 1 && m[1].length == 4) ? m[1] : null;
           showEvals();
         }
-        evalNext();
+        if (!_engine.kill) evalNext();
       });
+      return;
+    }
+  }
+  if (_curmoves.length > 0 && _history[_historyindex][0] == getCurFEN()) addHistoryEval(_historyindex, _curmoves[0].w ? -_curmoves[0].eval : _curmoves[0].eval, _engine.depth);
+  for (var i=_history.length-1; i>=0; i--) {
+    if (_history[i].length < 2 || _history[i][1] == null || (_history[i][1] != null && _history[i][1].depth < _engine.depth-1)) {
+      var curpos = _history[i][0];
+      _engine.score = null;
+      if (!_engine.ready) return;
+      if (checkPosition(parseFEN(curpos)).length > 0) {
+        addHistoryEval(i, null, _engine.depth-1);
+        if (!_engine.kill) evalNext();
+      } else {
+        _engine.ready = false;
+        _engine.eval(curpos, function done(str) {
+          _engine.ready = true;
+          if (i >= _history.length || _history[i][0] != curpos) return;
+          if (_engine.score != null) addHistoryEval(i, _engine.score, _engine.depth-1);
+          if (!_engine.kill) evalNext();
+        });
+      }
       return;
     }
   }
@@ -997,40 +1193,218 @@ function applyEval(m, s, d) {
  }
 }
 function evalAll() {
-  if (_curmoves.length == 0) return;
   if (_engine == null || !_engine.ready) {
+    if (_engine) _engine.kill = true;
     window.setTimeout(evalAll, 50);
     return;
   }
+  _engine.kill = false;
   _engine.ready = false;
+  for (var i=0; i<_curmoves.length; i++) {
+    _curmoves[i].eval = null;
+    _curmoves[i].depth = null;
+  }
   document.getElementById("moves").scrollTo(0, 0);
   var fen = getCurFEN();
   _engine.send("stop");
   if (_nohash) _engine.send("ucinewgame");
   _engine.score = null;
+  if (_curmoves.length == 0) {
+    _engine.ready = true;
+    if (!_engine.kill) evalNext();
+    return;
+  }
   _engine.eval(fen, function done(str) {
     _engine.ready = true;
     if (fen != getCurFEN()) return;
     var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
-    if (matches && matches.length > 1) applyEval(matches[1], _engine.score, _engine.depth - 1);
-    evalNext();
+    if (matches && matches.length > 1) {
+      applyEval(matches[1], _engine.score, _engine.depth - 1);
+      if (_history[_historyindex][0] == fen) addHistoryEval(_historyindex, _engine.score, _engine.depth - 1);
+    }
+    if (!_engine.kill) evalNext();
   }, function info(depth, score, pv0) {
+    if (fen != getCurFEN()) return;
     applyEval(pv0, score, depth - 1);
+    if (_history[_historyindex][0] == fen) addHistoryEval(_historyindex, score, depth - 1);
   });
 }
 
+var _lastMouseDataPos = null;
+function getGraphPointData(i) {
+  var e = null, black = false;
+  if (i >= 0 && i < _history.length && _history[i].length >= 2 && _history[i][1] != null && _history[i][1].score != null) {
+    black = _history[i][1].black;
+    e = _history[i][1].score / 100;
+    if (black) e = -e;
+    if ((e || 0) > 6) e = 6;
+    else if ((e || 0) < -6) e = -6;
+  }
+  return e;
+}
+function getGraphPointColor(i) {
+  var e = getGraphPointData(i), laste = getGraphPointData(i-1);
+  black = i >= 0 && i < _history.length && _history[i].length >= 2 && _history[i][1] != null && _history[i][1].score != null && _history[i][1].black;
+  var lost = laste == null || e == null ? 0 : black ? (laste - e) : (e - laste);
+  return lost <= 0.5 ? "#008800" : lost <= 1.0 ? "#00bb00" : lost <= 3.0 ? "#bb8800" : "#bb0000";
+}
+function repaintGraph(event) {
+  var data = [];
+  var color = [];
+  var laste = null;
+  for (var i = 0; i < _history.length; i++) {
+    data.push(getGraphPointData(i));
+    color.push(getGraphPointColor(i));
+  }
+  var border1 = 8.5, border2 = 18.5;
+  var xMax = 100, yMax = 2, xStep = 10, yStep = 1;
+  for (var i = 0; i < data.length; i++) if (Math.ceil(Math.abs(data[i])) > yMax) yMax = Math.ceil(Math.abs(data[i]));
+  if (data.length > xMax) xMax = data.length;
+  
+  if (event != null) {
+    var rect = document.getElementById("graph").getBoundingClientRect();
+    var mx = event.clientX - rect.left;
+    var my = event.clientY - rect.top;
+    var mouseDataPos = null;
+    var mUnit = (rect.width - border1 - border2) / xMax;
+    if (mx > border2 + mUnit / 2 && mx < rect.width - border1 + mUnit / 2 && my > border1 && my < rect.height - border2) {
+      mouseDataPos = Math.round((mx - border2) / mUnit) - 1;
+    }
+    if (mouseDataPos == _lastMouseDataPos) return;
+    _lastMouseDataPos = mouseDataPos;
+  } else _lastMouseDataPos = mouseDataPos;
+    
+  
+  var canvas = document.getElementById("graph");
+  var ctx = canvas.getContext("2d");
+  canvas.width = document.getElementById("graphWrapper").clientWidth;
+  canvas.height = document.getElementById("graphWrapper").clientHeight;
+  var yTotal = canvas.height - border1 - border2, xTotal = canvas.width - border1 - border2;
+  var xUnit = xTotal / (xMax / xStep), yUnit = yTotal / (yMax * 2 / yStep);
+  if (yUnit > 0)  while (yUnit < 12) { yUnit *= 2; yStep *= 2; }
+  if (xUnit > 0)  while (xUnit < 18) { xUnit *= 2; xStep *= 2; }
+  
+  ctx.font = "9px Segoe UI";
+  ctx.textAlign = "right";
+  ctx.textBaseline="middle"; 
+  ctx.lineWidth = 1;
+  ctx.fillText("0", border2 - 4, border1 + yTotal / 2);
+  ctx.beginPath();   
+  ctx.strokeStyle="#d5d5d5";
+  for (var i = yStep; i <= yMax; i += yStep) {
+    if (i == 0) continue;
+    var y = Math.round(i * yUnit / yStep);
+    ctx.fillText("+" + i, border2 - 4, border1 + yTotal / 2 - y);
+    ctx.fillText("-" + i, border2 - 4, border1 + yTotal / 2 + y);
+    if (i < yMax) {
+      ctx.moveTo(border2,border1 + yTotal / 2 - y);
+      ctx.lineTo(border2 + xTotal,border1 + yTotal / 2 - y);
+      ctx.moveTo(border2,border1 + yTotal / 2 + y);
+      ctx.lineTo(border2 + xTotal,border1 + yTotal / 2 + y);
+    }
+  }
+  ctx.textAlign = "center";
+  for (var i = 0; i <= xMax; i += xStep) {
+    var x = Math.round(i * xUnit / xStep);
+    ctx.fillText(i / 2, border2 + x, border1 + yTotal + border2 / 2);
+    if (x > 0) {
+      ctx.moveTo(border2 + x,border1);
+      ctx.lineTo(border2 + x,border1 + yTotal);
+    }
+    
+  }
+  ctx.stroke();
+
+  ctx.beginPath(); 
+  ctx.strokeStyle="#b5b5b5";
+  ctx.strokeRect(border2,border1,xTotal,yTotal);
+  ctx.moveTo(border2,border1 + yTotal / 2);
+  ctx.lineTo(border2 + xTotal,border1 + yTotal / 2);
+  ctx.stroke();
+  
+  for (var i = 1; i < data.length; i++) {
+    if (data[i] != null && data[i-1] != null) {
+      ctx.beginPath();
+      ctx.strokeStyle = color[i];
+      ctx.lineWidth = 2;
+      ctx.moveTo(border2 + i * (xUnit / xStep), border1 + yTotal / 2 - data[i - 1] * (yUnit / yStep));
+      ctx.lineTo(border2 + (i+1) * (xUnit / xStep), border1 + yTotal / 2 - data[i] * (yUnit / yStep));
+      ctx.stroke();
+    }
+  }
+  
+  for (var i = 0; i < data.length; i++) {
+      if (i == mouseDataPos) {
+        ctx.beginPath();
+        ctx.arc(border2 + (i+1) * (xUnit / xStep), border1 + yTotal / 2 - data[i] * (yUnit / yStep), 4, 0, 2 * Math.PI, false);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+      } else
+      if (i == _historyindex) {
+        ctx.beginPath();
+        ctx.arc(border2 + (i+1) * (xUnit / xStep), border1 + yTotal / 2 - data[i] * (yUnit / yStep), 4, 0, 2 * Math.PI, false);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(border2 + (i+1) * (xUnit / xStep), border1 + yTotal / 2 - data[i] * (yUnit / yStep), 2, 0, 2 * Math.PI, false);
+        ctx.fillStyle = 'white';
+        ctx.fill();        
+      } else {
+        ctx.beginPath();
+        ctx.arc(border2 + (i+1) * (xUnit / xStep), border1 + yTotal / 2 - data[i] * (yUnit / yStep), 1.5, 0, 2 * Math.PI, false);
+        ctx.fillStyle = 'black';
+        ctx.fill();
+      }
+  }
+  repaintLastMoveArrow();
+}
+function doGraph() {
+  _graph = !_graph;
+  document.getElementById("buttonGraph").className = _graph ? "on down" : "on";
+  document.getElementById("container").className = _graph ? "graph" : "";
+  repaintGraph();
+}
+function graphMouseMove(event) {
+  if (document.getElementById("graph").getBoundingClientRect().width == 412) repaintGraph(event);
+}
+function graphMouseDown(event) {
+  if (_lastMouseDataPos != null) {
+    var i = _lastMouseDataPos;
+    if (i < _history.length && i >= 0 && i != _historyindex) {
+      historyMove(i-_historyindex);
+    }
+  }
+}
+function getParameterByName(name, url) {
+  if (!url) {
+    url = window.location.href;
+  }
+  name = name.replace(/[\[\]]/g, "\\$&");
+  var regex = new RegExp("[?&]" + name + "(=([^&#]*)|&|#|$)"),
+      results = regex.exec(url);
+  if (!results || !results[2]) return "";
+  return decodeURIComponent(results[2].replace(/\+/g, " "));
+}
 window.onload = function() {
   document.onmousedown = onMouseDown;
   document.onmouseup = onMouseUp;
-  document.oncontextmenu = function() { return false; };
   document.onkeydown = onKeyDown;
-  document.getElementById("buttonStm").onclick = function() { command('sidetomove'); };
+  document.getElementById("chessboard1").oncontextmenu = function() { return false; };
+  document.getElementById("chessboard1").onwheel = onWheel;
+  document.getElementById("buttonStm").onclick = function() { command("sidetomove"); };
   document.getElementById("buttonBack").onclick = function(event) { historyMove(-1,event); };
   document.getElementById("buttonForward").onclick = function(event) { historyMove(+1,event); };
   document.getElementById("buttonRefresh").onclick = function() { showBoard(false); };
   document.getElementById("buttonFlip").onclick = function() { doFlip(); };
+  document.getElementById("buttonWindow").onclick = function() { command("window"); };
+  document.getElementById("buttonGraph").onclick = function() { doGraph(); };
+  document.getElementById("graph").onmouseover = function() { document.onmousemove = graphMouseMove; };
+  document.getElementById("graph").onmouseout = function() { if (document.onmousemove == graphMouseMove) document.onmousemove = null; repaintGraph(); };
+  document.getElementById("graph").onwheel = onWheel;
+
   setupInput();
   showBoard();
   _engine = loadEngine();
   historyLoad();
+  command(getParameterByName("x"));
 }
