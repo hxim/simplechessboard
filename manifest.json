@@ -2,7 +2,7 @@
   "description": "Simple chess FEN/PGN viewer with evaluation",
   "manifest_version": 2,
   "name": "SimpleChessBoard",
-  "version": "1.5",
+  "version": "1.6",
   "homepage_url": "https://github.com/hxim/simplechessboard",
   "permissions": ["storage"],
   "icons": {

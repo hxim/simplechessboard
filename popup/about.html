@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+    <meta charset="utf-8">
+    <link rel="icon" type="image/png" sizes="32x32" href="../icons/icon-32.png">
+    <link rel="icon" type="image/png" sizes="96x96" href="../icons/icon-96.png">
+    <title>About SimpleChessBoard</title>
+    <style>
+body {
+    background-color: white;
+    margin: 0;
+    padding: 0;
+}
+#content {
+    width: 1024px;
+    height: 640px;
+    margin: 0px auto;
+    background: linear-gradient(to bottom, #e3ebed 0%,#adb7b9 576px,#d3dbdd 608px,#b9c4c6 100%);
+    position: relative;
+}
+#image {
+    background-image: url("about_image.png");
+    background-repeat: no-repeat;
+    background-position: top left;
+    width: 637px;
+    height: 479px;
+    position: absolute;
+    top: 140px;
+    left: 40px;
+    transform: scale(0.65,0.65);
+    transform-origin: top left;
+    filter: drop-shadow(30px 30px 10px rgba(0,0,0,0.15));
+
+}
+#menu {
+    background-image: url("about_logo.png");
+    background-repeat: no-repeat;
+    background-position: top left;
+    width: 390px;
+    height: 96px;
+    padding-left: 101px;
+    position: absolute;
+    top: 0;
+    left: 0;
+
+}
+#menu .item {
+    display: inline-block;
+    height: 96px;
+    line-height: 96px;
+    padding-left: 15px;
+    padding-right: 15px;
+    color: #96a0a2;
+    font-weight: 600;
+    font-family: "Segoe UI",Arial,Helvetica,sans-serif;
+    font-size: 19px;
+}
+#menu .item:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+.info {
+    margin-left: 500px;
+    padding-top: 21px;
+    padding-right: 40px;
+    color: #000000;
+    opacity: 0.5;
+}
+.title {
+    padding-top: 7px;    
+    padding-bottom: 5px;
+    border-bottom: solid 1px #6f7d80;
+    overflow: hidden;
+    line-height: 25px;
+}
+.title span {
+    display: inline-block;
+    font-weight: 800;
+    font-family: "Segoe UI",Arial,Helvetica,sans-serif;
+    font-size: 13px;
+    transform: scale(1, 2);
+    transform-origin: top left;
+    text-transform: uppercase;
+    height: 37px;
+}
+.text {
+    padding-top: 6px;
+    font-weight: 600;
+    font-family: "Segoe UI",Arial,Helvetica,sans-serif;
+    font-size: 12px;
+}
+.text ul {
+    padding-left: 14px;
+    margin: 0;
+}
+.text a {
+    color: #000000;
+}
+.bcol {
+    float: left;
+    width: 242px;
+}
+.bcol .icon {
+    display: inline-block;
+    width: 20px;
+    vertical-align: top;
+}
+.bcol .desc {
+    display: inline-block;
+    width: 215px;
+    vertical-align: top;
+}
+
+.keylist .key {
+    display: inline-block;
+    width: 100px;
+    vertical-align: top;
+}
+.keylist .desc {
+    display: inline-block;
+    width: 380px;
+    vertical-align: top;
+}
+
+    </style>
+<script>
+function showPage(i) {
+    for (var j = 1; j <= 3; j++) document.getElementById("page"+j).style.display = i==j ? "" : "none";
+}
+</script>
+</head>
+<body>
+    <div id="content">
+    <div id="menu">
+        <div class="item" onclick="showPage(1);">About</div>
+        <div class="item" onclick="showPage(2);">Help</div>
+        <div class="item" onclick="showPage(3);">Keyboard shortcuts</div>
+    </div>
+    <div id="image"></div>
+    <div class="info" id="page1">
+        <div class="title"><span>What is SimpleChessBoard?</span></div>
+        <div class="text">SimpleChessBoard is simple chess position and game analysis tool available as browser extension for Mozilla Firefox, Google Chrome and as a web page at https://hxim.github.io/simplechessboard/popup/simplechessboard.html.</div>
+        <div class="title"><span>Features</span></div>
+        <div class="text"><ul>
+<li>Load your chess position or game using FEN or PGN.</li>
+<li>Setup pieces manually with your mouse in edit mode.</li>
+<li>You can browse game history and try out different variations. Arrow is showing last move and move recomennded by engine.</li>
+<li>List all legal moves and show them on chessboard</li>
+<li>Checkmate or stalemate is detected</li>
+<li>Analyze position and all legal moves with javascript version of Stockfish from https://github.com/niklasf/stockfish.js</li>
+<li>Show evaluation graph and visalize mistakes or blunders with different colors</li>
+<li>Open position or game in new window via URL. You can also share this URL with friends (in online version) and your position or entire game will be encoded in the link.</li>
+<li>You can also play chess against computer</li>
+</ul></div>
+        <div style="float:left;width:250px">
+        <div class="title"><span>Download links and on-line URL</span></div>
+        <div class="text"><ul>
+<li><a href="https://addons.mozilla.org/cs/firefox/addon/simplechessboard/">Mozilla Firefox extension</a></li>
+<li><a href="https://chrome.google.com/webstore/detail/simplechessboard/hppnfmeaoiochhjdlojgflkfedncdokl">Google Chrome extension</a></li>
+<li><a href="https://hxim.github.io/simplechessboard/popup/simplechessboard.html">On-line version</a></li>
+<li><a href="https://github.com/hxim/simplechessboard">Source code</a></li>
+
+</ul></div>
+        </div>
+        <div style="float:left;width:194px;margin-left: 40px">
+        <div class="title"><span>Contact author</span></div>
+        <div class="text"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 168 22" width="168" height="22"><style>tspan { white-space:pre }.shp0 { fill: #000000 } </style><path class="shp0" d="M35.92 6.9L35.92 16L33.86 16L33.86 12.29L30.09 12.29L30.09 16L28.04 16L28.04 6.9L30.09 6.9L30.09 10.53L33.86 10.53L33.86 6.9L35.92 6.9ZM42.63 11.41L45.43 16L43 16L41.43 13.04C41.38 12.93 41.31 12.72 41.25 12.43L41.23 12.43C41.2 12.57 41.13 12.78 41.02 13.06L39.44 16L37 16L39.9 11.45L37.25 6.9L39.74 6.9L41.04 9.63C41.14 9.84 41.23 10.1 41.31 10.4L41.34 10.4C41.39 10.22 41.49 9.95 41.63 9.6L43.07 6.9L45.36 6.9L42.63 11.41ZM48.57 6.9L48.57 16L46.52 16L46.52 6.9L48.57 6.9ZM61.01 6.9L61.01 16L58.99 16L58.99 10.55C58.99 9.97 59.01 9.32 59.06 8.6L59.01 8.6C58.91 9.16 58.81 9.57 58.73 9.81L56.59 16L54.92 16L52.75 9.87C52.69 9.71 52.59 9.29 52.46 8.6L52.4 8.6C52.46 9.5 52.49 10.29 52.49 10.97L52.49 16L50.64 16L50.64 6.9L53.64 6.9L55.5 12.29C55.65 12.72 55.76 13.16 55.82 13.59L55.86 13.59C55.98 13.09 56.1 12.65 56.22 12.28L58.08 6.9L61.01 6.9ZM63.78 16.16C63.45 16.16 63.17 16.06 62.95 15.85C62.73 15.65 62.62 15.4 62.62 15.1C62.62 14.8 62.74 14.55 62.96 14.36C63.19 14.16 63.47 14.06 63.81 14.06C64.15 14.06 64.43 14.16 64.65 14.36C64.87 14.56 64.98 14.8 64.98 15.1C64.98 15.41 64.87 15.67 64.64 15.86C64.42 16.06 64.13 16.16 63.78 16.16ZM70.4 6.9L70.4 12.39C70.4 13.61 70.12 14.54 69.55 15.19C68.99 15.83 68.17 16.16 67.1 16.16C66.62 16.16 66.18 16.08 65.77 15.91L65.77 13.99C66.12 14.25 66.52 14.39 66.95 14.39C67.89 14.39 68.35 13.69 68.35 12.31L68.35 6.9L70.4 6.9ZM76.24 16.16C74.94 16.16 73.87 15.73 73.05 14.89C72.23 14.04 71.82 12.93 71.82 11.57C71.82 10.13 72.24 8.97 73.07 8.08C73.9 7.19 75.01 6.75 76.38 6.75C77.68 6.75 78.73 7.17 79.54 8.02C80.34 8.87 80.74 9.99 80.74 11.39C80.74 12.82 80.32 13.97 79.49 14.84C78.66 15.72 77.58 16.16 76.24 16.16ZM76.33 8.51C75.61 8.51 75.04 8.78 74.61 9.32C74.19 9.86 73.98 10.57 73.98 11.46C73.98 12.36 74.19 13.08 74.61 13.6C75.04 14.13 75.59 14.39 76.28 14.39C76.98 14.39 77.54 14.13 77.96 13.62C78.37 13.11 78.58 12.41 78.58 11.5C78.58 10.56 78.38 9.82 77.98 9.3C77.58 8.77 77.03 8.51 76.33 8.51ZM88.33 13.65L88.29 13.65C88 14.45 87.46 14.86 86.68 14.86C86.1 14.86 85.63 14.65 85.27 14.22C84.91 13.8 84.73 13.21 84.73 12.46C84.73 11.5 84.98 10.71 85.47 10.1C85.97 9.49 86.57 9.19 87.26 9.19C87.9 9.19 88.29 9.44 88.45 9.93L88.48 9.93L88.54 9.3L89.97 9.3C89.78 11.11 89.68 12.28 89.68 12.84C89.68 13.43 89.84 13.73 90.17 13.73C90.5 13.73 90.78 13.5 91 13.05C91.22 12.61 91.33 12.02 91.33 11.3C91.33 10.31 91.02 9.49 90.39 8.86C89.76 8.23 88.88 7.91 87.75 7.91C86.54 7.91 85.53 8.34 84.73 9.18C83.93 10.02 83.53 11.05 83.53 12.27C83.53 13.44 83.88 14.37 84.59 15.05C85.3 15.72 86.28 16.06 87.52 16.06C88.48 16.06 89.35 15.88 90.14 15.52L90.14 16.73C89.42 17.04 88.49 17.19 87.35 17.19C85.79 17.19 84.52 16.75 83.54 15.85C82.56 14.96 82.07 13.75 82.07 12.24C82.07 10.7 82.59 9.41 83.63 8.36C84.68 7.31 86.02 6.78 87.67 6.78C89.19 6.78 90.43 7.19 91.37 8.01C92.31 8.82 92.78 9.89 92.78 11.23C92.78 12.32 92.49 13.2 91.92 13.86C91.34 14.53 90.63 14.86 89.78 14.86C89.36 14.86 89.02 14.75 88.76 14.52C88.49 14.3 88.35 14 88.33 13.65ZM87.49 10.29C87.11 10.29 86.8 10.51 86.56 10.94C86.32 11.38 86.2 11.88 86.2 12.45C86.2 12.86 86.28 13.17 86.44 13.4C86.61 13.63 86.82 13.74 87.07 13.74C87.47 13.74 87.79 13.53 88.01 13.1C88.24 12.67 88.36 12.1 88.36 11.39C88.36 11.05 88.28 10.78 88.12 10.59C87.96 10.39 87.75 10.29 87.49 10.29ZM102.12 10.81L102.12 15.39C101.24 15.9 100.13 16.16 98.81 16.16C97.35 16.16 96.19 15.75 95.35 14.94C94.5 14.13 94.08 13.02 94.08 11.59C94.08 10.16 94.54 9 95.47 8.1C96.39 7.2 97.62 6.75 99.15 6.75C100.11 6.75 100.96 6.88 101.7 7.15L101.7 9.07C101 8.66 100.14 8.46 99.12 8.46C98.27 8.46 97.58 8.74 97.04 9.29C96.51 9.84 96.24 10.58 96.24 11.5C96.24 12.43 96.48 13.16 96.96 13.67C97.44 14.18 98.09 14.44 98.91 14.44C99.4 14.44 99.79 14.37 100.07 14.23L100.07 12.45L98.25 12.45L98.25 10.81L102.12 10.81ZM114.27 6.9L114.27 16L112.24 16L112.24 10.55C112.24 9.97 112.27 9.32 112.32 8.6L112.27 8.6C112.16 9.16 112.07 9.57 111.98 9.81L109.85 16L108.17 16L106 9.87C105.94 9.71 105.85 9.29 105.72 8.6L105.66 8.6C105.72 9.5 105.74 10.29 105.74 10.97L105.74 16L103.9 16L103.9 6.9L106.9 6.9L108.76 12.29C108.91 12.72 109.01 13.16 109.08 13.59L109.12 13.59C109.23 13.09 109.35 12.65 109.48 12.28L111.34 6.9L114.27 6.9ZM121.1 6.9L124.34 16L122.11 16L121.46 13.98L118.22 13.98L117.58 16L115.36 16L118.67 6.9L121.1 6.9ZM118.66 12.4L120.99 12.4L120.01 9.34C119.94 9.11 119.89 8.84 119.86 8.52L119.81 8.52C119.79 8.79 119.74 9.05 119.65 9.32L118.66 12.4ZM127.53 6.9L127.53 16L125.48 16L125.48 6.9L127.53 6.9ZM135.02 14.34L135.02 16L129.6 16L129.6 6.9L131.65 6.9L131.65 14.34L135.02 14.34ZM136.94 16.16C136.61 16.16 136.34 16.06 136.12 15.85C135.9 15.65 135.79 15.4 135.79 15.1C135.79 14.8 135.9 14.55 136.13 14.36C136.35 14.16 136.63 14.06 136.97 14.06C137.32 14.06 137.6 14.16 137.81 14.36C138.03 14.56 138.14 14.8 138.14 15.1C138.14 15.41 138.03 15.67 137.81 15.86C137.59 16.06 137.3 16.16 136.94 16.16ZM146.29 13.8L146.29 15.68C145.63 16 144.76 16.16 143.69 16.16C142.29 16.16 141.19 15.75 140.39 14.93C139.59 14.11 139.19 13.01 139.19 11.65C139.19 10.19 139.64 9.01 140.54 8.1C141.44 7.2 142.61 6.75 144.04 6.75C144.93 6.75 145.68 6.86 146.29 7.08L146.29 9.06C145.68 8.69 144.99 8.51 144.21 8.51C143.35 8.51 142.66 8.78 142.14 9.32C141.62 9.85 141.35 10.58 141.35 11.5C141.35 12.38 141.6 13.08 142.1 13.6C142.59 14.13 143.26 14.39 144.1 14.39C144.9 14.39 145.63 14.19 146.29 13.8ZM151.57 16.16C150.26 16.16 149.2 15.73 148.38 14.89C147.56 14.04 147.15 12.93 147.15 11.57C147.15 10.13 147.57 8.97 148.4 8.08C149.23 7.19 150.34 6.75 151.71 6.75C153.01 6.75 154.06 7.17 154.86 8.02C155.67 8.87 156.07 9.99 156.07 11.39C156.07 12.82 155.65 13.97 154.82 14.84C153.99 15.72 152.9 16.16 151.57 16.16ZM151.66 8.51C150.94 8.51 150.36 8.78 149.94 9.32C149.52 9.86 149.31 10.57 149.31 11.46C149.31 12.36 149.52 13.08 149.94 13.6C150.36 14.13 150.92 14.39 151.6 14.39C152.31 14.39 152.87 14.13 153.29 13.62C153.7 13.11 153.91 12.41 153.91 11.5C153.91 10.56 153.71 9.82 153.31 9.3C152.9 8.77 152.35 8.51 151.66 8.51ZM167.95 6.9L167.95 16L165.92 16L165.92 10.55C165.92 9.97 165.95 9.32 166 8.6L165.95 8.6C165.84 9.16 165.75 9.57 165.66 9.81L163.53 16L161.86 16L159.69 9.87C159.63 9.71 159.53 9.29 159.4 8.6L159.34 8.6C159.4 9.5 159.42 10.29 159.42 10.97L159.42 16L157.58 16L157.58 6.9L160.58 6.9L162.44 12.29C162.59 12.72 162.7 13.16 162.76 13.59L162.8 13.59C162.92 13.09 163.04 12.65 163.16 12.28L165.02 6.9L167.95 6.9Z" /><path class="shp0" d="M19.83 8.97C17.27 11.16 15.32 12.85 13.99 14.06C13.55 14.48 13.19 14.8 12.91 15.03C12.63 15.26 12.26 15.5 11.8 15.74C11.34 15.98 10.91 16.1 10.51 16.1L10.5 16.1L10.49 16.1C10.09 16.1 9.66 15.98 9.2 15.74C8.74 15.5 8.37 15.26 8.09 15.03C7.81 14.8 7.45 14.48 7.01 14.06C5.95 13.09 4.01 11.39 1.18 8.97C0.74 8.6 0.34 8.17 0 7.69L0 19.41C0 20.06 0.18 20.61 0.55 21.07C0.92 21.54 1.36 21.77 1.88 21.77L19.13 21.77C19.64 21.77 20.08 21.54 20.45 21.07C20.82 20.61 21 20.06 21 19.41L21 7.69C20.66 8.16 20.27 8.59 19.83 8.97L19.83 8.97ZM20.44 1.68C20.07 1.22 19.63 0.99 19.13 0.99L1.88 0.99C1.27 0.99 0.81 1.25 0.49 1.76C0.16 2.27 0 2.91 0 3.68C0 4.29 0.21 4.97 0.64 5.69C1.07 6.41 1.53 6.98 2.02 7.39C2.28 7.63 3.08 8.33 4.42 9.5C5.75 10.66 6.78 11.56 7.49 12.19C7.57 12.26 7.73 12.41 7.99 12.64C8.24 12.87 8.45 13.06 8.62 13.2C8.79 13.34 8.99 13.5 9.23 13.68C9.47 13.86 9.69 13.99 9.9 14.08C10.11 14.17 10.31 14.21 10.49 14.21L10.5 14.21L10.51 14.21C10.69 14.21 10.89 14.17 11.1 14.08C11.31 13.99 11.53 13.86 11.77 13.68C12.01 13.5 12.21 13.34 12.38 13.2C12.55 13.06 12.76 12.87 13.01 12.64C13.27 12.41 13.43 12.26 13.51 12.19C14.23 11.56 16.06 9.96 19 7.39C19.57 6.89 20.04 6.29 20.43 5.58C20.81 4.87 21 4.13 21 3.35C21 2.7 20.81 2.15 20.44 1.68Z" /></svg></div>
+        </div>
+
+    </div>
+    <div class="info" id="page2" style="display:none;">
+        <div class="title"><span>How to enter or load FEN or PGN?</span></div>
+        <div class="text">Copy your FEN or PGN to clipboard and paste it in the input box at the top. You can also manually edit and change FEN displayed there. This tool also supports entering games as list of moves in simplified format like this: "1. e4 e5 2. Nf3 Nf6 3. d4".</div>
+        <div class="title"><span>Moving pieces on board</span></div>
+        <div class="text">You have several options to make legal moves on board:
+        <ul>
+<li>Click on move in list of all legal moves in the right.</li>
+<li>Move piece with mouse using drag and drop.</li>
+<li>Select piece and then click on destination square. This is useful on touchscreen.</li>
+</ul>
+Note: To add, remove pieces or make illegal moves you need to use edit mode (see below).
+</div>
+<div class="title"><span>Buttons and main menu</span></div>
+        <div class="text">
+<div class="bcol">
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M15 7H3.414l4.293-4.293a1 1 0 0 0-1.414-1.414l-6 6a1 1 0 0 0 0 1.414l6 6a1 1 0 0 0 1.414-1.414L3.414 9H15a1 1 0 0 0 0-2z"/></svg></div>
+<div class="desc">Go back to previous position</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M15.707 7.293l-6-6a1 1 0 0 0-1.414 1.414L12.586 7H1a1 1 0 0 0 0 2h11.586l-4.293 4.293a1 1 0 1 0 1.414 1.414l6-6a1 1 0 0 0 0-1.414z"/></svg></div>
+<div class="desc">Go forward to next position</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16"><path d="M15 1a1 1 0 0 0-1 1v2.418A6.995 6.995 0 1 0 8 15a6.954 6.954 0 0 0 4.95-2.05 1 1 0 0 0-1.414-1.414A5.019 5.019 0 1 1 12.549 6H10a1 1 0 0 0 0 2h5a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1z"></path></svg></div>
+<div class="desc">Refresh engine evaluation for current position</div></div>
+
+
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="16" height="16"><path d="M431.85,79.13l-433.36,433.37l433.37,431.64v-273.34c463.64,-39.79 591.66,197.22 591.66,197.22c0,0 0,-431.63 -591.66,-512.94z"></path></svg></div>
+<div class="desc">Revert changes to loaded or saved game (go back to original game after trying some variation)</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-save"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></div>
+<div class="desc">Keep changes so that next revert changes return to current state (also available with CTRL+Click on Revert)</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="16" height="16"><path d="M86.13 895.2L86.13 554.13L682.07 554.13L682.07 895.2L86.13 895.2ZM767.33 554.13L767.33 384.53L341.93 384.53L341.93 214L937.87 214L937.87 554.13L767.33 554.13ZM1023.13 43.46L256.67 43.46L256.67 384.53L0.87 384.53L0.87 980.46L767.33 980.46L767.33 639.39L1023.13 639.39L1023.13 43.46Z"></path></svg></div>
+<div class="desc">Open in new window where current game or position is encoded as part of URL (useful to save game for later or share with someone)</div></div>
+
+</div><div class="bcol">
+
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="16" height="16" stroke="currentColor"><style>.cledit { fill: none;stroke-linecap:round;stroke-linejoin:round;stroke-width: 128 } </style><path class="cledit" d="M885.7,636.59v249.11c0,51.53 -41.77,93.3 -93.3,93.3h-653.1c-51.53,0 -93.3,-41.77 -93.3,-93.3v-653.1c0,-51.53 41.77,-93.3 93.3,-93.3h249.11"></path><path class="cledit" d="M792.4,46l-466.5,466.5v186.6h186.6l466.5,-466.5l-186.6,-186.6z"></path></svg></div>
+<div class="desc">Edit mode where you can setup position (add, remove pieces, illegal moves)</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="16" height="16" stroke="currentColor"><style>.clinfo { fill: none;stroke-linecap:round;stroke-linejoin:round;stroke-width: 112 }.clinfo2 { fill: none;stroke-linecap:round;stroke-linejoin:round;stroke-width: 144} </style><path class="clinfo" d="M977.49,512c0,-257.42 -208.08,-465.49 -465.49,-465.49c-257.42,0 -465.49,208.08 -465.49,465.49c0,257.42 208.08,465.49 465.49,465.49c257.42,0 465.49,-208.08 465.49,-465.49z"></path><path class="clinfo2" d="M512,532v186.2"></path><path class="clinfo2" d="M512,305.8v0"></path></svg></div>
+<div class="desc">Information about played moves</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="16" height="16"><path d="M55.16,594.95v129.59c0,7.88 6.41,14.45 14.46,14.45h100.21c7.89,0 14.46,-6.41 14.46,-14.45v-227.98l-72.78,72.76c-15.44,15.27 -35.16,24.14 -56.35,25.62zM234.22,494.93v229.62c0,7.88 6.41,14.45 14.46,14.45h100.21c7.89,0 14.46,-6.41 14.46,-14.45v-135.18c-22.84,-0.49 -44.19,-9.53 -60.29,-25.62zM413.29,575.08v149.47c0,7.88 6.41,14.45 14.46,14.45h100.21c7.89,0 14.46,-6.41 14.46,-14.45v-275.77l-114.83,114.81c-4.44,4.44 -9.2,8.21 -14.29,11.5zM711.79,279.27l-119.43,119.41v325.87c0,7.88 6.41,14.45 14.46,14.45h100.21c7.89,0 14.46,-6.41 14.46,-14.45v-436.24c-3.29,-2.79 -5.75,-5.26 -7.56,-6.9zM793.77,67.72c-4.76,-5.09 -11.99,-7.72 -21.19,-7.72c-0.82,0 -1.81,0 -2.63,0c-46.66,2.14 -93.15,4.43 -139.81,6.57c-6.24,0.33 -14.79,0.66 -21.52,7.39c-2.14,2.14 -3.78,4.6 -5.09,7.56c-6.9,14.95 2.79,24.64 7.39,29.24l11.66,11.83c8.05,8.21 16.26,16.42 24.48,24.47l-281.91,282.01l-126.66,-126.63c-7.56,-7.56 -17.74,-11.83 -28.59,-11.83c-10.84,0 -20.86,4.27 -28.42,11.83l-168.72,168.52c-15.77,15.77 -15.77,41.23 0,56.99l7.56,7.56c7.56,7.56 17.74,11.83 28.59,11.83c10.84,0 20.86,-4.27 28.42,-11.83l132.58,-132.55l126.66,126.64c7.56,7.56 17.74,11.83 28.59,11.83c10.84,0 20.86,-4.27 28.59,-11.83l318.05,-317.98l35.98,35.81c4.27,4.27 10.19,10.18 19.22,10.18c3.78,0 7.56,-0.99 11.5,-3.12c2.63,-1.48 4.93,-3.12 6.9,-5.09c7.06,-7.06 8.38,-16.1 8.71,-23.16c1.31,-30.22 2.79,-60.44 4.27,-90.83l2.14,-45.5c0.49,-9.53 -1.64,-16.92 -6.74,-22.17z"></path></svg></div>
+<div class="desc">Evaluation graph of game showing mistakes or blunders with yellow/red color</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16"><path d="M0,3c0,-0.55 0.45,-1 1,-1h14c0.55,0 1,0.45 1,1c0,0.55 -0.45,1 -1,1h-14c-0.55,0 -1,-0.45 -1,-1zM0,8c0,-0.55 0.45,-1 1,-1h14c0.55,0 1,0.45 1,1c0,0.55 -0.45,1 -1,1h-14c-0.55,0 -1,-0.45 -1,-1zM15,12c0.55,0 1,0.45 1,1c0,0.55 -0.45,1 -1,1h-14c-0.55,0 -1,-0.45 -1,-1c0,-0.55 0.45,-1 1,-1z"></path></svg></div>
+<div class="desc">Open main menu</div></div>
+
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play-circle"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg></div>
+<div class="desc">Start game against computer (use CTRL to play as black)</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 443 443" width="16" height="16" fill="currentColor"><path d="M254.56,118.55v205.9l68.77,-27.17c2.31,-0.9 4.93,-0.16 6.43,1.81c0.73,0.99 1.11,2.16 1.11,3.32c0,1.17 -0.38,2.36 -1.14,3.36l-103.85,135.08c-1.05,1.35 -2.66,2.15 -4.37,2.15c-1.71,0 -3.33,-0.8 -4.38,-2.15l-103.84,-135.08c-1.53,-1.97 -1.53,-4.69 -0.04,-6.69c1.49,-1.96 4.11,-2.7 6.42,-1.8l68.77,27.16v-205.89l-68.76,27.16c-2.31,0.9 -4.93,0.16 -6.43,-1.8c-0.74,-0.99 -1.11,-2.17 -1.11,-3.32c0,-1.17 0.38,-2.36 1.14,-3.36l103.85,-135.08c1.05,-1.35 2.66,-2.15 4.37,-2.15c1.71,0 3.33,0.8 4.38,2.15l103.83,135.08c1.52,1.97 1.54,4.69 0.04,6.68c-1.48,1.97 -4.11,2.7 -6.42,1.8z"></path></svg></div>
+<div class="desc">Flip board (in main menu and also available as button in bottom right corner of chessboard)</div></div>
+<div><div class="icon"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-play-circle"><circle cx="12" cy="12" r="10"/><path d="M12,2 a1,1 0 0,0 0,20" fill="currentColor" stroke="none"/></svg></div>
+<div class="desc">Change side to move (in main menu and also available as button in top right corner of chessboard)</div></div>
+
+
+</div>
+</div>
+    </div>
+    <div class="info" id="page3" style="display:none;">
+        <div class="title"><span>Navigation</span></div>
+        <div class="text keylist">
+<div><div class="key">LEFT or UP</div>
+<div class="desc">Go back to previous position</div></div>
+<div><div class="key">RIGHT or DOWN</div>
+<div class="desc">Go forward to next position</div></div>
+<div><div class="key">PAGEDOWN</div>
+<div class="desc">Go 10 positions back</div></div>
+<div><div class="key">PAGEUP</div>
+<div class="desc">Go 10 positions forward</div></div>
+<div><div class="key">HOME</div>
+<div class="desc">Go to game start</div></div>
+<div><div class="key">END</div>
+<div class="desc">Go to game end</div></div>
+        </div>
+
+        <div class="title"><span>Evaluation engine</span></div>
+        <div class="text keylist">
+<div><div class="key">R</div>
+<div class="desc">Refresh engine evaluation for current position</div></div>
+<div><div class="key">NUM +</div>
+<div class="desc">Increase engine depth</div></div>
+<div><div class="key">NUM -</div>
+<div class="desc">Decrease engine depth</div></div>
+<div><div class="key">NUM *</div>
+<div class="desc">Reset engine depth to 10</div></div>
+<div><div class="key">NUM 0</div>
+<div class="desc">Turns off engine (depth set to 0)</div></div>
+        </div>
+
+        <div class="title"><span>Tools and commands</span></div>
+        <div class="text keylist">
+<div><div class="key">ESC</div>
+<div class="desc">Revert changes</div></div>
+<div><div class="key">F</div>
+<div class="desc">Flip board</div></div>
+<div><div class="key">S</div>
+<div class="desc">Change side to move</div></div>
+<div><div class="key">E</div>
+<div class="desc">Edit mode</div></div>
+<div><div class="key">I</div>
+<div class="desc">Show or hide information box</div></div>
+<div><div class="key">G</div>
+<div class="desc">Show or hide evaluation graph</div></div>
+        </div>
+
+    </div>
+    </div>
+
+</body>
+</html>

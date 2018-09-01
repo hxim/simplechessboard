@@ -1,8 +1,9 @@
-var _engine, _depth = 10, _curmoves = [];
-const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+var START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+var _engine, _curmoves = [];
 var _history = [[START]], _history2 = null, _historyindex = 0;
+var _flip = false, _edit = false, _info = false, _graph = false, _play = null;
+var _arrow = false, _menu = false;
 var _dragElement = null, _dragActive = false, _startX, _startY, _dragCtrl, _clickFrom, _clickFromElem;
-var _newPiece = '-', _flip = false, _nohash = true, _arrow = false, _graph = false;
 
 function setElemText(elem, value) {
   while(elem.firstChild) elem.removeChild(elem.firstChild);
@@ -21,6 +22,8 @@ function getCurFEN() {
   return getElemText(document.getElementById('fen'));
 }
 
+// Input box and commands
+
 function command(text) {
   var mvdivs = ['<div class="moves">', '<div class="tview2 column">','<div class="extension-item Moves">'];
   for (var i = 0; i < mvdivs.length; i++) {
@@ -32,7 +35,7 @@ function command(text) {
               .replace(/<span class="move">\s*([^<\s]*)\s*<\/span>/g,"<move>$1</move>")
       } else {
         text = text.replace(/<interrupt>((?!<\/interrupt>).)*<\/interrupt>/g,"")
-              .replace(/<move(\s*p="[^"]*")?[^>]*>/g,"<move>")
+              .replace(/<move[^<>"]*(("[^"]*")[^<>"]*)*>/g,"<move>")
               .replace(/<\/?san>|<eval>[^<]*<\/eval>|<glyph[^<]*<\/glyph>|<move>\.\.\.<\/move>/g,"")
               .replace(/\?/g,"x");
       }
@@ -49,6 +52,7 @@ function command(text) {
     _history = [[getCurFEN()]]; _historyindex = 0;
     historyMove(0);
   } else if (text.split(".").length > 1) {
+    text = text.replace(/\u2605/g, "");
     text = " " + text.replace(/\./g," ").replace(/(\[FEN [^\]]+\])+?/g, function ($0, $1) { return $1.replace(/\[|\]|"/g,"").replace(/\s/g,"."); });
     text = text.replace(/\[Event /g, "* [Event ").replace(/\s(\[[^\]]+\])+?/g, "").replace(/(\{[^\}]+\})+?/g, "");
     var r = /(\([^\(\)]+\))+?/g; while (r.test(text)) text = text.replace(r, "");
@@ -77,14 +81,17 @@ function command(text) {
       var move = parseMove(pos, moves[i]);
       if (move == null) { alert("incorrect move: "+moves[i] + " "+ gm); break; }
       pos = doMove(pos, move.from, move.to, move.p);
-      historyAdd(generateFEN(pos), oldhistory, move);
+      historyAdd(generateFEN(pos), oldhistory, move, moves[i]);
     }
     setCurFEN(generateFEN(pos));
     historyMove(0);
   } else if (text.toLowerCase() == "reset") {
     setCurFEN(START);
     _history = [[getCurFEN()]]; _historyindex = 0;
+    _history2 = null;
+    refreshButtonRevert();
     historyMove(0);
+    _history2 = null;
   } else if (text.toLowerCase() == "colorflip") {
     setCurFEN(generateFEN(colorflip(parseFEN(getCurFEN()))));
     showBoard();
@@ -95,14 +102,12 @@ function command(text) {
     historySave();
   } else if (text.toLowerCase().indexOf("depth ") == 0) { 
     if (_engine != null) {
-      _engine.depth = Math.min(128,Math.max(1,parseInt(text.toLowerCase().replace("depth ", ""))));
+      _engine.depth = Math.min(128,Math.max(0,parseInt(text.toLowerCase().replace("depth ", ""))));
       if (isNaN(_engine.depth)) _engine.depth = 10;
     }
     refreshMoves();
     evalAll();
     historySave();
-  } else if (text.toLowerCase() == "hash") {
-    _nohash = !_nohash;
   } else if (text.toLowerCase() == "flip") {
     doFlip();
   } else if (text.toLowerCase() == "window") {
@@ -157,9 +162,9 @@ function command(text) {
       for (var j = 0; j < symbols; j++) { cur += (i < gi.length ? gi[i] : "0"); i++; }
       var n = parseInt(cur, 2);
       if (n == 0 || n >= moves.length + 1) break;
-      var move = moves[n-1];
+      var move = moves[n-1], san = sanMove(pos, move, moves);
       pos = doMove(pos, move.from, move.to, move.p);
-      historyAdd(generateFEN(pos), oldhistory, move);
+      historyAdd(generateFEN(pos), oldhistory, move, san);
     }
     setCurFEN(generateFEN(pos));
     historyMove(0);
@@ -169,12 +174,16 @@ function command(text) {
       _history = _history2[1];
       _history2 = null;
       setCurFEN(_history[_historyindex][0]);
+      refreshButtonRevert();
       historyMove(0);
-      document.getElementById('buttonRevert').className = "off";
-      document.getElementById('buttonRevert').onclick = null;
     }
+  } else if (text.toLowerCase() == "keep") {
+    _history2 = null;
+    refreshButtonRevert();
+    historyMove(0);
   }
 }
+
 function dosearch() {
   var text = document.getElementById('searchInput').value;
   document.getElementById('searchInput').value = getCurFEN();
@@ -193,23 +202,18 @@ function setupInput() {
   document.getElementById("buttonGo").onclick = function() { dosearch(); };
   document.getElementById("buttonGo").onmousedown = function(event) { event.preventDefault(); };
   var input = document.getElementById("searchInput");
-  input.onfocus = function() { this.select(); showHideButtonGo(true); document.onkeydown = null; };
-  input.onblur = function() { showHideButtonGo(false); document.onkeydown = onKeyDown; };
-  input.onpaste = function() { window.setTimeout(function() {showHideButtonGo(true);}, 1) };
+  input.onmousedown = function() { this.focuswithmouse=1; };
+  input.onmouseup = function() { if (this.focuswithmouse==2 && input.selectionStart == input.selectionEnd) this.select(); this.focuswithmouse=0; }
+  input.onfocus = function() {  if (this.focuswithmouse==1) this.focuswithmouse=2; else { input.select(); this.focuswithmouse=0; } showHideButtonGo(true); document.onkeydown = null;  };
+  input.onblur = function() { input.selectionStart = input.selectionEnd; showHideButtonGo(false); document.onkeydown = onKeyDown; this.focuswithmouse=0; };
+  input.onpaste = function() { window.setTimeout(function() {showHideButtonGo(true);}, 1); };
   input.onkeydown = function(e) { if (e.keyCode == 27) e.preventDefault(); window.setTimeout(function() {showHideButtonGo(true);}, 1); };
   input.onkeyup = function(e) { if (e.keyCode == 27) { input.value = getCurFEN(); this.select(); showHideButtonGo(true); }};
   document.getElementById("simpleSearch").onsubmit = function() { dosearch(); return false; };
 }
 
-function getEvalText(e, s) {
-  if (e == null) return s ? "" : "?";
-  var matein = Math.abs(Math.abs(e) - 1000000);
-  if (Math.abs(e) > 900000) {
-    if (s) return (e > 0 ? "+M" : "-M") + matein;
-    else return (e > 0 ? "white mate in " : "black mate in ") + matein;
-  }
-  return (e / 100).toFixed(2);
-}
+// Status bar
+
 function showStatus(text, answer) {
   var state = text.length > 0;
   var status = document.getElementById("status");
@@ -221,6 +225,19 @@ function showStatus(text, answer) {
     showArrow1(move);
   } else setArrow(_arrow);
 }
+
+// Chessboard and arrows
+
+function getEvalText(e, s) {
+  if (e == null) return s ? "" : "?";
+  var matein = Math.abs(Math.abs(e) - 1000000);
+  if (Math.abs(e) > 900000) {
+    if (s) return (e > 0 ? "+M" : "-M") + matein;
+    else return (e > 0 ? "white mate in " : "black mate in ") + matein;
+  }
+  return (e / 100).toFixed(2);
+}
+
 function showLegalMoves(from) {
   setArrow(from == null);
   var pos = parseFEN(getCurFEN());
@@ -237,7 +254,7 @@ function showLegalMoves(from) {
     div.className = c;
     div.onmouseover = null;
     setElemText(div, "");
-    if (from == null) continue;
+    if (from == null || from.x < 0 || from.y < 0) continue;
     if (from.x==x && from.y==y) { div.className += " h0"; _clickFromElem = div; }
     else if (isLegal(pos, from, {x:x,y:y})) {
         var text = "", san = "", answer = null;
@@ -258,6 +275,21 @@ function showLegalMoves(from) {
         div.onmouseout = function() {showStatus("");};
     }
   }
+  
+  elem = document.getElementById('editWrapper').children[0];
+  for (var i=0; i<elem.children.length; i++) {
+    var div = elem.children[i];
+    if (div.tagName != 'DIV') continue;
+    if (div.style.zIndex > 0) continue;
+    var x = - parseInt(div.style.left.replace("px","")) / 30 - 1;
+    var y = - parseInt(div.style.top.replace("px","")) / 30 - 1;
+    var c = div.className.split(' ')[0] + " " + div.className.split(' ')[1];
+    div.className = c;
+    setElemText(div, "");
+    if (from == null || from.x >= 0 || from.y >= 0 || c[2] == 'S') continue;
+    if (from.x==x && from.y==y) { div.className += " h0"; _clickFromElem = div; }
+  }
+
   _clickFrom = from;
 }
 function setArrow(state) {
@@ -289,7 +321,7 @@ function showBoard(noeval, refreshhistory) {
      || pos.b[x][y]=="k" && isWhiteCheck(colorflip(pos))) div.className += " h2";
     elem.appendChild(div);
   }
-  _clickFromElem = null;
+  if (_clickFromElem != null && _clickFrom != null && _clickFrom.x >= 0 && _clickFrom.y >= 0) _clickFromElem = null;
   document.getElementById('searchInput').value = getCurFEN();
 
   if (!noeval) {
@@ -298,18 +330,13 @@ function showBoard(noeval, refreshhistory) {
     evalAll();
   }
   document.getElementById('buttonStm').className = pos.w ? "white" : "black";
-  var matecheck = _curmoves.length == 0, illegal = false;
-  if (matecheck) illegal = checkPosition(pos).length > 0;
-  if (matecheck && !illegal) matecheck = pos.w && isWhiteCheck(pos) || !pos.w && isWhiteCheck(colorflip(pos));
-  setElemText(document.getElementById('infoWrapper'),
-       _curmoves.length == 0 && illegal ? "illegal" :
-       _curmoves.length == 0 && matecheck ? "checkmate" :
-       _curmoves.length == 0 && !matecheck ? "stalemate" :
-       _curmoves.length == 1 ? "1 move" :
-       _curmoves.length + " moves");
+
   setArrow(true);
   
   repaintLastMoveArrow();
+  if (_menu) reloadMenu();
+  if (_graph) repaintGraph();
+  if (_info) updateInfo();
 }
 
 function highlightMove(index, state) {
@@ -340,19 +367,23 @@ function highlightMove(index, state) {
   else showStatus("");
 }
 function doHighlightMove(index) {
+  
   var oldfen = getCurFEN();
-  var pos = parseFEN(oldfen);
-  pos = doMove(pos,_curmoves[index].move.from,_curmoves[index].move.to,_curmoves[index].move.p);
+  var pos = parseFEN(oldfen), san = _curmoves[index].san;
+  if (pos.w != _play) pos = doMove(pos,_curmoves[index].move.from,_curmoves[index].move.to,_curmoves[index].move.p);
   historyAdd(oldfen);
   setCurFEN(generateFEN(pos));
-  historyAdd(getCurFEN(), null, _curmoves[index].move);
+  historyAdd(getCurFEN(), null, _curmoves[index].move, san);
   showBoard(getCurFEN() == oldfen);
+  doComputerMove();
 }
 function showArrowInternal(move, wrapperId) {
   var elem = document.getElementById(wrapperId);
   if (move == null) { elem.style.display = "none"; return; }
-  elem.style.top = document.getElementById('chessboard1').getBoundingClientRect().top+"px";
-  elem.style.left = document.getElementById('chessboard1').getBoundingClientRect().left+"px";
+  elem.style.top = document.getElementById('chessboard1').getBoundingClientRect().top
+                 - document.getElementById("container").getBoundingClientRect().top + "px";
+  elem.style.left = document.getElementById('chessboard1').getBoundingClientRect().left
+                  - document.getElementById("container").getBoundingClientRect().left + "px";
   elem.style.width = elem.style.height = (40 * 8) + "px";
   var line = elem.children[0].children[1];
   line.setAttribute('x1', 20+(_flip?7-move.from.x:move.from.x)*40);
@@ -363,6 +394,151 @@ function showArrowInternal(move, wrapperId) {
 }
 function showArrow1(move) { showArrowInternal(move, "arrowWrapper1"); }
 function showArrow2(move) { showArrowInternal(move, "arrowWrapper2"); }
+function updateInfo() {
+  var addline = function(e, label, value, color, right, className, underline) {
+    var line = document.createElement('div');
+    var span1 = document.createElement('span');
+    var span2 = document.createElement('span');
+    setElemText(span1, label + ": ");
+    line.appendChild(span1);
+    setElemText(span2, value);
+    span2.style.color = color;
+    line.appendChild(span2);
+    if (right) line.style.float = "right";
+    if (underline) line.style.borderBottom = "1px solid #bbbbbb";
+    if (className != null) line.className = className;
+    e.appendChild(line);
+  }
+ 
+  var elem = document.getElementById("infoContent");
+  while (elem.firstChild) elem.removeChild(elem.firstChild);
+
+  var btn1 = document.getElementById("infoBtn1");
+  var btn2 = document.getElementById("infoBtn2");
+  btn1.onclick = function() { btn1.className = "infoIcon selected"; btn2.className = "infoIcon"; updateInfo(); historySave(); }
+  btn2.onclick = function() { btn1.className = "infoIcon"; btn2.className = "infoIcon selected"; updateInfo(); historySave(); }
+  
+  if (btn2.className.indexOf("selected") >= 0) {
+    var div = document.createElement('div');
+    var lastmn = null, mn = null;
+    for (var i = 0; i < _history.length; i++) {
+      if (mn != lastmn) {
+        var span1 = document.createElement('span');
+        setElemText(span1, mn + ". ");
+        div.appendChild(span1);
+        lastmn = mn;
+      }
+      var mn = parseMoveNumber(_history[i][0]);
+      var san = '\u2605';
+      if (_history[i].length > 3 && _history[i][3] != null) san = _history[i][3];
+      var span2 = document.createElement('span');
+      setElemText(span2, san);
+      span2.className = "movelink" + (i == _historyindex ? " selected" : "");
+      span2.targetindex = i;
+      if (i == _historyindex) span2.style.backgroundColor = getGraphPointColor(i, true);
+      else span2.style.color = getGraphPointColor(i, true);
+      span2.onclick = function() {
+        var i = this.targetindex;
+        if (i < _history.length && i >= 0 && i != _historyindex) {
+          historyMove(i-_historyindex);
+        }
+      }
+      div.appendChild(span2);
+      div.appendChild(document.createTextNode(" "));
+    }
+    elem.appendChild(div);
+    return;
+  }
+
+  var pos = parseFEN(getCurFEN());
+  var curpos = pos.m[1];
+  var lastpos = parseFEN(_history[_history.length-1][0]).m[1];
+
+  addline(elem, (pos.w ? "White" : "Black") + " moves", _curmoves.length, "#00ffff", true, "firstline");
+  addline(elem, "Move", curpos + " / " + lastpos, "#00ffff", false, "firstline underline", true);
+
+  var i;
+  var movebest = null, evalbest = null;
+  var evalplayed = null, moveplayed = null;
+  var evallastbest = null, movelastbest = null;
+  var evallastplayed = null, movelastplayed = null;
+
+  i = _historyindex + 1;
+  if (i < _history.length &&  _history[i].length > 3 && _history[i][3] != null) {
+    moveplayed = _history[i][3];
+    if (_history[i][1] != null) evalplayed = (_history[i][1].black ? -1 : 1) * _history[i][1].score;
+  }
+
+  i = _historyindex;
+  if (_history[i].length > 3 && _history[i][3] != null) {
+    movelastplayed = _history[i][3];
+    if (_history[i][1] != null) {
+      evallastplayed = (_history[i][1].black ? -1 : 1) * _history[i][1].score;
+    }
+  }
+  if (_history[i].length > 1 && _history[i][1] != null) {
+    var m = _history[i][1].move;
+    if (m != null)
+    for (var j = 0; j < _curmoves.length; j++) 
+      if (_curmoves[j].move.from.x == m.from.x &&
+          _curmoves[j].move.from.y == m.from.y &&
+          _curmoves[j].move.to.x == m.to.x &&
+          _curmoves[j].move.to.y == m.to.y) {
+        movebest = _curmoves[j].san;
+        evalbest = (_history[i][1].black ? -1 : 1) * _history[i][1].score;
+      }
+  }
+  
+  i = _historyindex - 1;
+  var lastpos = null;
+  if (i >= 0 && _history[i].length > 1 && _history[i][1] != null) {
+    lastpos = parseFEN(_history[i][0]);
+    var errmsgs = checkPosition(lastpos);
+    var moves = [];
+    if (errmsgs.length == 0) moves = genMoves(lastpos);
+    if (_history[i][1] != null) {
+      var m = _history[i][1].move;
+      if (m != null)
+      for (var j = 0; j < moves.length; j++) 
+        if (moves[j].from.x == m.from.x &&
+            moves[j].from.y == m.from.y &&
+            moves[j].to.x == m.to.x &&
+            moves[j].to.y == m.to.y) {
+          movelastbest = sanMove(lastpos,moves[j],moves);
+          evallastbest = (_history[i][1].black ? -1 : 1) * _history[i][1].score;
+        }
+    }
+  }
+
+  var text1 = evalbest == null ? (movebest||"-") : (movebest + " (" + getEvalText(evalbest, true) + ")");
+  addline(elem, "Current best", text1, "#ffff00");
+
+  line = document.createElement('div');
+  var text2 = evalplayed == null ? (moveplayed||"-") : (moveplayed + " (" + getEvalText(evalplayed, true) + ")" );
+  addline(elem, "Current played", text2, "#ffff00");
+
+  if (Math.abs(evalbest) > 900000) evalbest = null;
+  if (Math.abs(evalplayed) > 900000) evalplayed = null;
+  var text3 = "-";
+  if (!(evalbest == null || evalplayed == null || pos == null)) text3 = ((evalbest - evalplayed) * (pos.w ? 1 : -1) / 100).toFixed(2);
+  var c = getGraphPointColor(_historyindex + 1);
+  if (c == "#008800" || (moveplayed != null && movebest == moveplayed)) c = "#00bb00";
+  addline(elem, "Difference", text3, c, false, "underline", true);
+
+  var text4 = evallastbest == null ? (movelastbest||"-") : (movelastbest + " (" + getEvalText(evallastbest, true) + ")");
+  addline(elem, "Last best", text4, "#ffff00");
+
+  var text5 = evallastplayed == null ? (movelastplayed||"-") : (movelastplayed + " (" + getEvalText(evallastplayed, true) + ")" );
+  addline(elem, "Last played", text5, "#ffff00");
+
+  if (Math.abs(evallastbest) > 900000) evallastbest = null;
+  if (Math.abs(evallastplayed) > 900000) evallastplayed = null;
+  var text6 = "-";
+  if (!(evallastbest == null || evallastplayed == null || lastpos == null)) text6 = ((evallastbest - evallastplayed) * (lastpos.w ? 1 : -1) / 100).toFixed(2);
+  var c = getGraphPointColor(_historyindex, true);
+  //if (movelastplayed != null && movelastbest == movelastplayed) c = "#00bb00";
+  addline(elem, "Difference", text6, c);
+}
 function showEvals() {
   setElemText(document.getElementById("moves"), "");
   if (_curmoves.length > 0) {
@@ -405,19 +581,23 @@ function showEvals() {
     node1.index = i;
     node1.onmouseover = function() { highlightMove(this.index, true); };
     node1.onmouseout = function() { highlightMove(this.index, false); };
-    node1.onmousedown = function() { doHighlightMove(this.index); };
+    node1.onmousedown = function(e) { if (_menu) showHideMenu(false); doHighlightMove(this.index); };
     document.getElementById("moves").appendChild(node1);
   }
   if (_arrow) setArrow(true);
 }
 
+// Chess position
+
 function bounds(x, y) {
   return x >= 0 && x <= 7 && y >= 0 && y <= 7;
 }
+
 function board(pos, x, y) {
   if (x >= 0 && x <= 7 && y >= 0 && y <= 7) return pos.b[x][y];
   return "x";
 }
+
 function colorflip(pos) {
   var board = new Array(8);
   for (var i = 0; i < 8; i++) board[i] = new Array(8);
@@ -428,7 +608,10 @@ function colorflip(pos) {
   }
   return {b:board, c:[pos.c[2],pos.c[3],pos.c[0],pos.c[1]], e:pos.e == null ? null : [pos.e[0],7-pos.e[1]], w:!pos.w, m:[pos.m[0],pos.m[1]]};
 }
-
+function parseMoveNumber(fen) {
+  var a = fen.replace(/^\s+/,'').split(' ');
+  return (a.length > 5 && !isNaN(a[5]) && a[5] != '') ? parseInt(a[5]) : 1;
+}
 function parseFEN(fen) {
   var board = new Array(8);
   for (var i = 0; i < 8; i++) board[i] = new Array(8);
@@ -533,6 +716,7 @@ function isWhiteCheck(pos) {
   }
   return false;
 }
+
 function doMove(pos, from, to, promotion) {
   if (pos.b[from.x][from.y].toUpperCase() != pos.b[from.x][from.y]) {
     var r = colorflip(doMove(colorflip(pos),{x:from.x,y:7-from.y}, {x:to.x,y:7-to.y}, promotion));
@@ -571,6 +755,7 @@ function doMove(pos, from, to, promotion) {
   r.m[0] = (pos.b[from.x][from.y] == 'P' || pos.b[to.x][to.y] != '-') ? 0 : r.m[0] + 1;
   return r;
 }
+
 function isLegal(pos, from, to) {
   if (!bounds(from.x, from.y)) return false;
   if (!bounds(to.x, to.y)) return false;
@@ -621,6 +806,7 @@ function isLegal(pos, from, to) {
   if (isWhiteCheck(doMove(pos, from, to))) return false;
   return true;
 }
+
 function parseMove(pos, s) {
   var promotion = null;
   s = s.replace(/[\+|#|\?|!|x]/g,"");
@@ -715,12 +901,14 @@ function sanMove(pos, move, moves) {
   if (isWhiteCheck(pos2) || isWhiteCheck(colorflip(pos2))) s += genMoves(pos2).length == 0 ? "#" : "+";
   return s;
 }
+
 function fixCastling(pos) {
     pos.c[0] &= !(pos.b[7][7]!='R' || pos.b[4][7]!='K');
     pos.c[1] &= !(pos.b[0][7]!='R' || pos.b[4][7]!='K');
     pos.c[2] &= !(pos.b[7][0]!='r' || pos.b[4][0]!='k');
     pos.c[3] &= !(pos.b[0][0]!='r' || pos.b[4][0]!='k');
 }
+
 function checkPosition(pos) {
   var errmsgs = [];
   var wk=bk=0, wp=bp=0, wpr=bpr=0, wn=wb1=wb2=wr=wq=0, bn=bb1=bb2=br=bq=0;
@@ -759,6 +947,9 @@ function checkPosition(pos) {
    || (pos.c[3] && (pos.b[0][0]!='r' || pos.b[4][0]!='k'))) errmsgs.push("Black has castling rights and king or rook not in their starting position");
   return errmsgs;
 }
+
+// Move list
+
 function refreshMoves() {
   var pos = parseFEN(getCurFEN());
   _curmoves = [];
@@ -769,7 +960,19 @@ function refreshMoves() {
     for (var i=0; i<moves.length;i++) {
       _curmoves.push({move:moves[i],san:sanMove(pos,moves[i],moves),fen:generateFEN(doMove(pos,moves[i].from,moves[i].to,moves[i].p)),w:!pos.w,eval:null,depth:0});
     }
-    showEvals();
+    if (_curmoves.length == 0) {
+      var matecheck = pos.w && isWhiteCheck(pos) || !pos.w && isWhiteCheck(colorflip(pos));
+      var div = document.createElement('div');
+      div.style.color = "magenta";
+      setElemText(div, matecheck ? "Checkmate:" : "Stalemate:");
+      document.getElementById("moves").appendChild(div);
+      var ul = document.createElement('ul'), li = document.createElement('li');
+      setElemText(li, matecheck && pos.w ? "Black wins" : matecheck ? "White wins" : "Draw");
+      ul.appendChild(li);
+      document.getElementById("moves").appendChild(ul);      
+    } else {
+      showEvals();
+    }
   } else {
     var div = document.createElement('div');
     div.style.color = "red";
@@ -784,14 +987,20 @@ function refreshMoves() {
     }
     document.getElementById("moves").appendChild(ul);
   }
+
 }
+
+// History
 
 function historyButtons() {
   document.getElementById('buttonBack').className = _historyindex > 0 ? "on" : "off";
   document.getElementById('buttonForward').className = _historyindex < _history.length - 1 ? "on" : "off";
 }
 function historySave() {
-  var data = { _historyindex : _historyindex, _history : _history, _fen : getCurFEN(), _depth : _engine == null ? null : _engine.depth };
+  var data = { _historyindex : _historyindex, _history : _history, _history2 : _history2,
+               _fen : getCurFEN(), _depth : _engine == null ? null : _engine.depth,
+               _flip : _flip, _edit : _edit, _info : _info, _graph : _graph, _play : _play, _info2 : document.getElementById("infoBtn2").className.indexOf("selected") >= 0 };
+
   if (typeof browser !== 'undefined' && typeof browser.storage !== 'undefined') browser.storage.local.set(data);
   if (typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined') chrome.storage.local.set(data);
 }
@@ -799,21 +1008,34 @@ function historyLoad() {
   var loadHistory = null;
   var load =  function(res) {
     if (typeof res === 'undefined' || res == null ||
-        typeof res._history === 'undefined' || res._history == null ||
         typeof res._historyindex === 'undefined' || res._historyindex == null ||
+        typeof res._history === 'undefined' || res._history == null ||
+        typeof res._history2 === 'undefined' ||
+        typeof res._fen === 'undefined' || res._fen == null ||
         typeof res._depth === 'undefined' || res._depth == null ||
-        typeof res._fen === 'undefined' || res._fen == null) return;
-    _history = res._history;
+        typeof res._flip === 'undefined' || res._flip == null ||
+        typeof res._edit === 'undefined' || res._edit == null ||
+        typeof res._info === 'undefined' || res._info == null ||
+        typeof res._info2 === 'undefined' || res._info2 == null ||
+        typeof res._graph === 'undefined' || res._graph == null ||
+        typeof res._play === 'undefined') return;
     _historyindex = res._historyindex;
+    _history = res._history;
+    _history2 = res._history2; refreshButtonRevert();
     setCurFEN(res._fen);
-    _engine.depth = res._depth;
+    if (_engine != null) _engine.depth = res._depth;
+    _flip = res._flip; refreshFlip();
+    _play = res._play;
+    _edit = res._edit; _info = res._info; _graph = res._graph; refreshEditInfoGraph();
+    document.getElementById("infoBtn1").className = "infoIcon" + (res._info2 ? "" : " selected");
+    document.getElementById("infoBtn2").className = "infoIcon" + (res._info2 ? " selected" : "");
     historyButtons();
     showBoard();
   }
   if (typeof browser !== 'undefined' && typeof browser.storage !== 'undefined') loadHistory = browser.storage.local.get(null).then((res) => load(rec));
   if (typeof chrome !== 'undefined' && typeof chrome.storage !== 'undefined') loadHistory = chrome.storage.local.get(null, load);
 }
-function historyAdd(fen, oldhistory, move) {
+function historyAdd(fen, oldhistory, move, san) {
   if (_historyindex >= 0 && _history[_historyindex][0] == fen) return;
   var c = null;
   if (oldhistory != null) {
@@ -823,21 +1045,12 @@ function historyAdd(fen, oldhistory, move) {
   } else {
     if (_history2 == null) {
       _history2 = [_historyindex,JSON.parse(JSON.stringify(_history))];
-      document.getElementById('buttonRevert').className = "on";
-      document.getElementById('buttonRevert').onclick = function(e) {
-        if (e.ctrlKey) {
-          document.getElementById('buttonRevert').className = "off";
-          document.getElementById('buttonRevert').onclick = null;
-          _history2 = null;
-        } else {
-          command("revert");
-        }
-      };
+      refreshButtonRevert();
     }
   }
   _historyindex++;
   _history.length = _historyindex;
-  _history.push([fen,c,move]);
+  _history.push([fen,c,move,san]);
   historyButtons();
   historySave();
 }
@@ -855,37 +1068,11 @@ function historyMove(v, e, ctrl) {
     historyButtons();
     historySave();
     showBoard();
-    repaintGraph();
   }
 }
 
-function onMouseDown(e) {
-  if (document.onmousemove == graphMouseMove) {
-    graphMouseDown(e);
-    return;
-  }
-  if (e == null) e = window.event;
-  var elem = target = e.target != null ? e.target : e.srcElement;
-  while (target != null && target.id != 'chessboard1' && target.tagName != 'BODY') {
-    target = target.parentNode;
-  }  
-  if (target == null) return true;
-  if (target.id != 'chessboard1') return true;
-  if (!(e.button === 0 || e.which === 1)) {e.preventDefault(); chessboardRightClick(e); return;}
-  if (_dragElement != null) return true;
-  if (elem.className[2] == '-') return true;
-  document.onmousemove = onMouseMove;
-  document.body.focus();
-  document.onselectstart = function () { return false; };
-  elem.ondragstart = function () { return false; };
-  _dragActive = false;
-  _dragCtrl = e.ctrlKey;
-  _dragElement = elem;
-  _startX = e.clientX;
-  _startY = e.clientY;
-  return false;
+// Mouse and keyboard events
 
-}
 function getDragX(x, full) {
   var w = _dragElement.getBoundingClientRect().width;
   var offsetX = document.getElementById('chessboard1').getBoundingClientRect().left + w / 2;
@@ -900,20 +1087,67 @@ function getDragY(y, full) {
   else if (_flip) return 7-Math.round((y - offsetY) / h);
   else return Math.round((y - offsetY) / h);
 }
+
+function getCurSan(move) {
+  for (var i = 0; i < _curmoves.length; i++)
+    if (_curmoves[i].move.from.x==move.from.x && _curmoves[i].move.from.y==move.from.y &&
+        _curmoves[i].move.to.x==move.to.x && _curmoves[i].move.to.y==move.to.y &&
+        (_curmoves[i].move.p == 'Q' || _curmoves[i].move.p == null)) return _curmoves[i].san;
+  return null;
+}
+
+function onMouseDown(e) {
+  if (_menu) showHideMenu(false, e);
+  if (document.onmousemove == graphMouseMove) {
+    graphMouseDown(e);
+    return;
+  }
+  if (_dragElement != null) return true;
+  if (e == null) e = window.event;
+  var elem = target = e.target != null ? e.target : e.srcElement;
+  while (target != null && target.id != 'chessboard1' && target.id != 'editWrapper' && target.tagName != 'BODY') {
+    target = target.parentNode;
+  }  
+  if (target == null) return true;
+  if (target.id != 'editWrapper' && target.id != 'chessboard1') return true;
+  
+  if (_edit && target.id == 'chessboard1' && elem.className != null && (e.which === 2 || e.button === 4)) {
+      if (getPaintPiece() == elem.className[2]) setPaintPiece('S'); else setPaintPiece(elem.className[2]);
+      return;
+    } 
+      
+  if (target.id == 'chessboard1' && ((e.which === 3 || e.button === 2) && _edit ||
+     (_clickFrom != null &&  _clickFromElem != null && _clickFromElem.className.indexOf(" h0") > 0 && _clickFrom.x < 0 && _clickFrom.y < 0))) {
+    e.preventDefault();
+    paintMouse(e);
+    return;
+  }
+  if (elem.className[2] == '-' && target.id == 'chessboard1') return true;
+  document.onmousemove = onMouseMove;
+  document.body.focus();
+  document.onselectstart = function () { return false; };
+  elem.ondragstart = function () { return false; };
+  _dragActive = false;
+  _dragElement = elem;
+  _startX = e.clientX;
+  _startY = e.clientY;  
+  _dragCtrl = target.id == 'editWrapper' ? true : e.ctrlKey;
+  return false;
+
+}
 function dragActivate() {
-    if (_dragElement == null) return;
-    var clone = _dragElement.cloneNode(false);
-    if (!_dragCtrl) _dragElement.className = _dragElement.className[0] + " -";
-    _dragElement = clone;
-    _dragElement.className = _dragElement.className.substring(0, 3);
-    _dragElement.style.backgroundColor = "transparent";
-    _dragElement.style.background = "none";
-    _dragElement.style.zIndex = 10000;
-    _dragElement.style.pointerEvents = "none";
-    document.getElementById('chessboard1').appendChild(_dragElement);
-    _dragActive = true;
-    
-    showLegalMoves({x:getDragX(_startX),y:getDragY(_startY)});
+  if (_dragElement == null) return;
+  var clone = _dragElement.cloneNode(false);
+  if (!_dragCtrl) _dragElement.className = _dragElement.className[0] + " -";
+  _dragElement = clone;
+  _dragElement.className = _dragElement.className.substring(0, 3);
+  _dragElement.style.backgroundColor = "transparent";
+  _dragElement.style.background = "none";
+  _dragElement.style.zIndex = 10000;
+  _dragElement.style.pointerEvents = "none";
+  document.getElementById('chessboard1').appendChild(_dragElement);
+  _dragActive = true;
+  if (!_dragCtrl) showLegalMoves({x:getDragX(_startX),y:getDragY(_startY)});
 }
 
 function onMouseMove(e) {
@@ -921,6 +1155,7 @@ function onMouseMove(e) {
   if (e == null) e = window.event;
   if (!_dragActive) {
     if (Math.abs(e.clientX - _startX) < 8 && Math.abs(e.clientY - _startY) < 8) return;
+    if (getDragX(_startX) > 7 && 'PNBRQK'.indexOf(_dragElement.className[2].toUpperCase()) < 0) return;
     dragActivate();
   }
   _dragElement.style.left = getDragX(e.clientX, true) + 'px';
@@ -931,7 +1166,7 @@ function onMouseMove(e) {
 function onMouseUp(e) {
   if (document.onmousemove == graphMouseMove) return;
   onMouseMove(e);
-  if (!_dragActive && _clickFrom != null &&  _clickFromElem != null && _clickFromElem.className.indexOf(" h0") > 0) {
+  if (!_dragActive && _clickFrom != null &&  _clickFromElem != null && _clickFromElem.className.indexOf(" h0") > 0 ) {
     var old = _dragElement;
     _dragElement = _clickFromElem;
     var x2 = getDragX(e.clientX);
@@ -941,13 +1176,27 @@ function onMouseUp(e) {
     var pos = parseFEN(oldfen);
     var legal = isLegal(pos,_clickFrom,{x:x2,y:y2});
     if (legal) {
-      pos = doMove(pos,_clickFrom,{x:x2,y:y2});
+      var move = {from:_clickFrom,to:{x:x2,y:y2}};
+      var san = getCurSan(move);
+      if (pos.w != _play) pos = doMove(pos,_clickFrom,{x:x2,y:y2});
       historyAdd(oldfen);
       setCurFEN(generateFEN(pos));
-      historyAdd(getCurFEN(), null, {from:_clickFrom,to:{x:x2,y:y2}});
+      historyAdd(getCurFEN(), null, move, san);
       showStatus("");
       showBoard(getCurFEN() == oldfen);
       _dragElement = null;
+      doComputerMove();
+    } else if (_edit && bounds(_clickFrom.x, _clickFrom.y)) {
+       if (bounds(x2, y2) && _clickFrom.x != x2 || _clickFrom.y != y2) {
+         pos.b[x2][y2] = pos.b[_clickFrom.x][_clickFrom.y];
+         pos.b[_clickFrom.x][_clickFrom.y] = '-';
+         fixCastling(pos);
+         historyAdd(oldfen);
+         setCurFEN(generateFEN(pos));
+         historyAdd(getCurFEN());
+         showBoard(getCurFEN() == oldfen);
+         _dragElement = null;
+       }
     }
   }
   if (_dragElement != null) {
@@ -955,32 +1204,67 @@ function onMouseUp(e) {
     var y2 = getDragY(e.clientY);  
     if (_dragActive) {
       showStatus("");
-      var x1 = getDragX(_startX);
-      var y1 = getDragY(_startY);
 
       var oldfen = getCurFEN();
       var pos = parseFEN(oldfen);
+      var x1 = getDragX(_startX);
+      var y1 = getDragY(_startY);
+      var move = {from:{x:x1,y:y1},to:{x:x2,y:y2}};
+      var san = getCurSan(move);
       var legal = !_dragCtrl && isLegal(pos,{x:x1,y:y1},{x:x2,y:y2});
       if (legal) {
-        pos = doMove(pos,{x:x1,y:y1},{x:x2,y:y2});
-      } else {
-        if (bounds(x2, y2)) pos.b[x2][y2] = pos.b[x1][y1];
-        if (!_dragCtrl && (x1 != x2 || y1 != y2)) pos.b[x1][y1] = '-';
+        if (pos.w != _play) pos = doMove(pos,{x:x1,y:y1},{x:x2,y:y2});
+      } else if (_edit) {
+        if (!_dragCtrl) {
+          if (bounds(x2, y2)) pos.b[x2][y2] = pos.b[x1][y1];
+          if (x1 != x2 || y1 != y2) pos.b[x1][y1] = '-';
+        } else {
+          if (bounds(x2, y2)) pos.b[x2][y2] = _dragElement.className[2];
+        }
         fixCastling(pos);
       }
       historyAdd(oldfen);
       setCurFEN(generateFEN(pos));
-      historyAdd(getCurFEN(), null, legal ? {from:{x:x1,y:y1},to:{x:x2,y:y2}} : null);
+      if (!legal) historyAdd(getCurFEN());
+      else historyAdd(getCurFEN(), null, move, san);
       showBoard(getCurFEN() == oldfen);
+      if (legal) doComputerMove(); 
     } else {
-      if (_clickFrom != null &&  _clickFromElem != null && _clickFromElem.className.indexOf(" h0") > 0 &&
-          _clickFrom.x == x2 && _clickFrom.y == y2) showLegalMoves(null);
-      else {
+      if (x2 > 7 || x2 < 0) {
+        x2 = - Math.round((getDragX(e.clientX, true)
+             - document.getElementById('editWrapper').getBoundingClientRect().left
+             + document.getElementById('chessboard1').getBoundingClientRect().left) / 30) - 1;
+        y2 = - Math.round((getDragY(e.clientY, true)
+             - document.getElementById('editWrapper').getBoundingClientRect().top
+             + document.getElementById('chessboard1').getBoundingClientRect().top) / 30) - 1;
+      }
+      if (e.which === 3 || e.button === 2) {
+        var list = document.getElementById('editWrapper').children[0].children, p = null;
+        for (var i = 0; i < list.length; i++) {
+          var x2c = - Math.round((list[i].getBoundingClientRect().left - document.getElementById('editWrapper').getBoundingClientRect().left) / 30) - 1;
+          var y2c = - Math.round((list[i].getBoundingClientRect().top - document.getElementById('editWrapper').getBoundingClientRect().top) / 30) - 1;
+          if (list[i].className != null && x2c == x2 && y2c == y2) p = list[i].className[2];
+        }
+        if (p != null) {
+          if (p == 'S') setCurFEN(START);
+          else if (p == '-') setCurFEN("8/8/8/8/8/8/8/8 w - - 0 0");
+          else {
+            var pos = parseFEN(getCurFEN());
+            for (var x = 0; x < 8; x++) for (var y = 0; y < 8; y++) if (pos.b[x][y] == p) pos.b[x][y] = '-';
+            fixCastling(pos);
+            setCurFEN(generateFEN(pos));
+          }
+          historySave();
+          showBoard();
+        }
+      } else if (_clickFrom != null &&  _clickFromElem != null && _clickFromElem.className.indexOf(" h0") > 0 && _clickFrom.x == x2 && _clickFrom.y == y2) {
+        showLegalMoves(null);
+      } else {
         showLegalMoves({x:x2,y:y2});
       }
     }
   } else {
-    showLegalMoves(null);
+    if (_clickFrom == null || _clickFrom.x > 0 && _clickFrom.y > 0) showLegalMoves(null);
   }
   document.onmousemove = null;
   document.onselectstart = null;
@@ -988,29 +1272,49 @@ function onMouseUp(e) {
 
 }
 
-function chessboardRightClickMove(e) {
-  if (e == null) e = window.event;
-  var elem = target = e.target != null ? e.target : e.srcElement;
-  var w = elem.getBoundingClientRect().width;
-  var h = elem.getBoundingClientRect().height;
-  var offsetX = document.getElementById('chessboard1').getBoundingClientRect().left + w / 2;
-  var offsetY = document.getElementById('chessboard1').getBoundingClientRect().top + h / 2;
-  var x1 = Math.round((e.clientX - offsetX) / w);
-  var y1 = Math.round((e.clientY - offsetY) / h);  
-  if (_flip) { x1 = 7-x1; y1 = 7-y1; }
-  if (bounds(x1, y1)) {
-    var pos = parseFEN(getCurFEN());
-    pos.b[x1][y1] = _newPiece;
-    fixCastling(pos);
-    setCurFEN(generateFEN(pos));
-    historySave();
-    showBoard();    
-  } else document.onmousemove = null;
+function onWheel(e) {
+  if (_menu) showHideMenu(false);
+  if (e.ctrlKey) return;
+  if (_edit) {
+    var p = getPaintPiece();
+    var str = 'pPnNbBrRqQkK-S';
+    var index = str.indexOf(p);
+    if (index >= 0) {
+      if (e.deltaY < 0) index--;
+      if (e.deltaY > 0) index++;
+      if (index < 0) index = str.length - 1;
+      if (index == str.length) index = 0;
+      setPaintPiece(str[index]);
+    }
+    
+  } else {
+    if (e.deltaY < 0) historyMove(-1);
+    if (e.deltaY > 0) historyMove(+1);
+  }
+  e.preventDefault();
 }
-function chessboardRightClick(e) {
+
+function setPaintPiece(newp) {
+  var list = document.getElementById('editWrapper').children[0].children, newe = null;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].className != null && list[i].className[2] == newp) newe = list[i];
+  }
+  if (newe != null) {
+    var x2 = - Math.round((newe.getBoundingClientRect().left - document.getElementById('editWrapper').getBoundingClientRect().left) / 30) - 1;
+    var y2 = - Math.round((newe.getBoundingClientRect().top - document.getElementById('editWrapper').getBoundingClientRect().top) / 30) - 1;
+    showLegalMoves({x:x2,y:y2});
+  }
+}
+function getPaintPiece() {
+  var list = document.getElementById('editWrapper').children[0].children;
+  for (var i = 0; i < list.length; i++) {
+    if (list[i].className != null && list[i].className.indexOf(" h0") > 0) return list[i].className[2];
+  }
+  return 'S';
+}
+function paintMouse(e, p) {
   if (e == null) e = window.event;
   var elem = target = e.target != null ? e.target : e.srcElement;
-
   var w = elem.getBoundingClientRect().width;
   var h = elem.getBoundingClientRect().height;
   var offsetX = document.getElementById('chessboard1').getBoundingClientRect().left + w / 2;
@@ -1018,60 +1322,43 @@ function chessboardRightClick(e) {
   var x1 = Math.round((e.clientX - offsetX) / w);
   var y1 = Math.round((e.clientY - offsetY) / h);  
   if (_flip) { x1 = 7-x1; y1 = 7-y1; }
-  if (bounds(x1, y1)) {
+  if (bounds(x1, y1) && (_clickFromElem != null && _clickFromElem.className.indexOf(" h0") > 0 || (e.which === 3 || e.button === 2))) {
     var pos = parseFEN(getCurFEN());
-    var s = '-PNBRQKpnbrqk-', index = s.indexOf(pos.b[x1][y1]);
-    if (e.which === 2 || e.button === 4) { _newPiece = s[index]; return; }
-    if (pos.b[x1][y1] == _newPiece) _newPiece = s[index+1];
-    if (e.ctrlKey) _newPiece = '-';
-    pos.b[x1][y1] = _newPiece;
+    var newp = null;
+    if (e.ctrlKey || (e.which === 3 || e.button === 2)) newp = '-';
+    else newp = p != null ? p : _clickFromElem.className[2];
+    pos.b[x1][y1] = newp;
     fixCastling(pos);
     setCurFEN(generateFEN(pos));
     historySave();
     showBoard();
-    document.onmousemove = chessboardRightClickMove;
-  }
-}
-function doFlip() {
-  _flip = !_flip;
-  var elem = document.getElementById('cbTable');
-  for (var i = 0; i < 8; i++) {
-    elem.children[0].children[0].children[1+i].innerText =
-    elem.children[0].children[9].children[1+i].innerText = 'abcdefgh'[_flip ? 7-i : i];
-    elem.children[0].children[1+i].children[0].innerText =
-    elem.children[0].children[1+i].children[i==0?2:1].innerText = '12345678'[_flip ? i : 7-i];
-  }
-  showBoard(true);
+    if (p == null) document.onmousemove = function(event) { paintMouse(event, newp); };
+  } else document.onmousemove = null;
 }
 
 function onKeyDown(e) {
   var k = e.keyCode || e.which;
   var c = String.fromCharCode(e.keyCode || e.which).replace(" ","-");
-  if (k == 106) { if (_engine != null) command("depth 10"); showBoard(false, true); }
+  if (k == 96) { if (_engine != null) command("depth 0"); showBoard(false, true); }
+  else if (k == 106) { if (_engine != null) command("depth 10"); showBoard(false, true); }
   else if (k == 107) { if (_engine != null) command("depth " + Math.min(128, _engine.depth+1)); showBoard(false, true); }
-  else if (k == 109) { if (_engine != null) command("depth " + Math.max(1, _engine.depth-1)); showBoard(false, true); }
-  else if (k == 111) { showBoard(false, true); }
+  else if (k == 109) { if (_engine != null) command("depth " + Math.max(0, _engine.depth-1)); showBoard(false, true); }
   else if (k == 38 || k == 37) historyMove(-1);
   else if (k == 33) historyMove(-10);
   else if (k == 36) historyMove(-1,null,true);
   else if (k == 40 || k == 39) historyMove(+1);
   else if (k == 34) historyMove(+10);
   else if (k == 35) historyMove(+1,null,true);
-  else if (k == 45) {setCurFEN(START);historySave();showBoard();}
-  else if (k == 46) {setCurFEN("8/8/8/8/8/8/8/8 w - - 0 0");historySave();showBoard();}
+  else if (c == 'R') showBoard(false, true);
   else if (k == 27) command("revert");
-  else if ('-PNBRQK'.indexOf(c) >= 0) _newPiece = c;
-  else if (c == 'C') _newPiece = _newPiece.toLowerCase();
   else if (c == 'F') command("flip");
   else if (c == 'S') command("sidetomove");
-  else if (c == 'H') command("hash");
+  else if (c == 'E') doEditInfoGraph(true,false,false);
+  else if (c == 'I') doEditInfoGraph(false,true,false);
+  else if (c == 'G') doEditInfoGraph(false,false,true);
 }
 
-function onWheel(e) {
-  if (e.deltaY < 0) historyMove(-1);
-  if (e.deltaY > 0) historyMove(+1);
-  e.preventDefault();
-}
+// Evaluation engine
 
 function loadEngine() {
   var wasmSupported = typeof WebAssembly === 'object' && WebAssembly.validate(Uint8Array.of(0x0, 0x61, 0x73, 0x6d, 0x01, 0x00, 0x00, 0x00));
@@ -1121,13 +1408,14 @@ function loadEngine() {
   });
   return engine;
 }
-function addHistoryEval(index, score, depth) {
+function addHistoryEval(index, score, depth, move) {
   if (_history[index].length < 2 || _history[index][1] == null || (_history[index][1] != null && _history[index][1].depth < depth)) {
     var black = _history[index][0].indexOf(" b ") > 0;
-    var ei = {score: score, depth: depth, black: black};
+    var ei = {score: score, depth: depth, black: black, move: move};
     if (_history[index].length >= 2) _history[index][1] = ei;
     else { _history[index].push(ei); _history[index].push(null); }
     repaintGraph();
+    updateInfo();
   }
 }
 function evalNext() {
@@ -1153,7 +1441,7 @@ function evalNext() {
       return;
     }
   }
-  if (_curmoves.length > 0 && _history[_historyindex][0] == getCurFEN()) addHistoryEval(_historyindex, _curmoves[0].w ? -_curmoves[0].eval : _curmoves[0].eval, _engine.depth);
+  if (_curmoves.length > 0 && _history[_historyindex][0] == getCurFEN()) addHistoryEval(_historyindex, _curmoves[0].w ? -_curmoves[0].eval : _curmoves[0].eval, _engine.depth, _curmoves[0].move);
   for (var i=_history.length-1; i>=0; i--) {
     if (_history[i].length < 2 || _history[i][1] == null || (_history[i][1] != null && _history[i][1].depth < _engine.depth-1)) {
       var curpos = _history[i][0];
@@ -1167,13 +1455,18 @@ function evalNext() {
         _engine.eval(curpos, function done(str) {
           _engine.ready = true;
           if (i >= _history.length || _history[i][0] != curpos) return;
-          if (_engine.score != null) addHistoryEval(i, _engine.score, _engine.depth-1);
+          if (_engine.score != null) {
+            var m = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+            var answer = (m && m.length > 1 && m[1].length == 4) ? m[1] : null;
+            addHistoryEval(i, _engine.score, _engine.depth-1, parseBestMove(answer));
+          }
           if (!_engine.kill) evalNext();
         });
       }
       return;
     }
   }
+  historySave();
 }
 function applyEval(m, s, d) {
   if (s == null || m.length < 4) return;
@@ -1192,7 +1485,13 @@ function applyEval(m, s, d) {
     }
  }
 }
+function parseBestMove(m) {
+  if (m == null || m.length < 4) return null;
+  return {from:{x:"abcdefgh".indexOf(m[0]),y:"87654321".indexOf(m[1])},
+          to:{x:"abcdefgh".indexOf(m[2]),y:"87654321".indexOf(m[3])}};
+}
 function evalAll() {
+  if (_play != null) return;
   if (_engine == null || !_engine.ready) {
     if (_engine) _engine.kill = true;
     window.setTimeout(evalAll, 50);
@@ -1205,9 +1504,10 @@ function evalAll() {
     _curmoves[i].depth = null;
   }
   document.getElementById("moves").scrollTo(0, 0);
+  if (_engine.depth == 0) { _engine.ready = true; return; }
   var fen = getCurFEN();
   _engine.send("stop");
-  if (_nohash) _engine.send("ucinewgame");
+  _engine.send("ucinewgame");
   _engine.score = null;
   if (_curmoves.length == 0) {
     _engine.ready = true;
@@ -1220,15 +1520,61 @@ function evalAll() {
     var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
     if (matches && matches.length > 1) {
       applyEval(matches[1], _engine.score, _engine.depth - 1);
-      if (_history[_historyindex][0] == fen) addHistoryEval(_historyindex, _engine.score, _engine.depth - 1);
+      if (_history[_historyindex][0] == fen) addHistoryEval(_historyindex, _engine.score, _engine.depth - 1, parseBestMove(matches[1]));
     }
     if (!_engine.kill) evalNext();
   }, function info(depth, score, pv0) {
     if (fen != getCurFEN()) return;
     applyEval(pv0, score, depth - 1);
-    if (_history[_historyindex][0] == fen) addHistoryEval(_historyindex, score, depth - 1);
+    if (_history[_historyindex][0] == fen) addHistoryEval(_historyindex, score, depth - 1, parseBestMove(pv0));
   });
 }
+
+function doComputerMove() {
+  if (_play == null) return;
+  var fen = getCurFEN();
+  if (_play == (fen.indexOf(" b ") > 0)) return;
+  if (_engine == null || !_engine.ready) {
+    if (_engine) _engine.kill = true;
+    window.setTimeout(function() { doComputerMove(); }, 50);
+    return;
+  }
+  if (_engine.depth == 0) {
+    if (_curmoves.length == 0) return;
+    var move = _curmoves[Math.floor(Math.random()*_curmoves.length)].move;
+    var san = getCurSan(move);
+    var pos = doMove(parseFEN(fen),move.from,move.to,move.p);
+    historyAdd(fen);
+    setCurFEN(generateFEN(pos));
+    historyAdd(getCurFEN(), null, move, san);
+    showStatus("");
+    showBoard(false);
+  } else {
+    _engine.kill = false;
+    _engine.ready = false;
+    _engine.send("stop");
+    _engine.send("ucinewgame");
+    _engine.score = null;
+    _engine.eval(fen, function done(str) {
+      _engine.ready = true;
+      if (fen != getCurFEN()) return;
+      var matches = str.match(/^bestmove\s(\S+)(?:\sponder\s(\S+))?/);
+      if (matches && matches.length > 1) {
+        var move = parseBestMove(matches[1]);
+        var san = getCurSan(move);
+        var pos = doMove(parseFEN(fen),move.from,move.to,move.p);
+        historyAdd(fen);
+        setCurFEN(generateFEN(pos));
+        historyAdd(getCurFEN(), null, move, san);
+        showStatus("");
+        showBoard(false);
+      }
+    });
+  }
+ 
+}
+
+// Evaluation graph
 
 var _lastMouseDataPos = null;
 function getGraphPointData(i) {
@@ -1242,11 +1588,18 @@ function getGraphPointData(i) {
   }
   return e;
 }
-function getGraphPointColor(i) {
+function getGraphPointColor(i, light) {
   var e = getGraphPointData(i), laste = getGraphPointData(i-1);
   black = i >= 0 && i < _history.length && _history[i].length >= 2 && _history[i][1] != null && _history[i][1].score != null && _history[i][1].black;
   var lost = laste == null || e == null ? 0 : black ? (laste - e) : (e - laste);
-  return lost <= 0.5 ? "#008800" : lost <= 1.0 ? "#00bb00" : lost <= 3.0 ? "#bb8800" : "#bb0000";
+  return lost <= 0.5 && (light != true) ? "#008800" : lost <= 1.0 ? "#00bb00" : lost <= 3.0 ? "#bb8800" : "#bb0000";
+}
+function showGraphStatus(i) {
+  if (i >= 0 && i < _history.length && _history[i] != null && _history[i].length > 3 && _history[i][3] != null) {
+    var pos = parseFEN(_history[i][0]);
+    var text = (pos.w ? (pos.m[1]-1) + "... " : pos.m[1] + ". ") + _history[i][3];
+    showStatus(text);
+  } else showStatus("");
 }
 function repaintGraph(event) {
   var data = [];
@@ -1273,8 +1626,7 @@ function repaintGraph(event) {
     if (mouseDataPos == _lastMouseDataPos) return;
     _lastMouseDataPos = mouseDataPos;
   } else _lastMouseDataPos = mouseDataPos;
-    
-  
+
   var canvas = document.getElementById("graph");
   var ctx = canvas.getContext("2d");
   canvas.width = document.getElementById("graphWrapper").clientWidth;
@@ -1311,7 +1663,6 @@ function repaintGraph(event) {
       ctx.moveTo(border2 + x,border1);
       ctx.lineTo(border2 + x,border1 + yTotal);
     }
-    
   }
   ctx.stroke();
 
@@ -1356,18 +1707,16 @@ function repaintGraph(event) {
         ctx.fill();
       }
   }
+  showGraphStatus(mouseDataPos);
   repaintLastMoveArrow();
 }
-function doGraph() {
-  _graph = !_graph;
-  document.getElementById("buttonGraph").className = _graph ? "on down" : "on";
-  document.getElementById("container").className = _graph ? "graph" : "";
-  repaintGraph();
-}
+
 function graphMouseMove(event) {
   if (document.getElementById("graph").getBoundingClientRect().width == 412) repaintGraph(event);
 }
+
 function graphMouseDown(event) {
+  if (document.getElementById("graph").getBoundingClientRect().width != 412) return;
   if (_lastMouseDataPos != null) {
     var i = _lastMouseDataPos;
     if (i < _history.length && i >= 0 && i != _historyindex) {
@@ -1375,6 +1724,146 @@ function graphMouseDown(event) {
     }
   }
 }
+
+// Buttons and menu
+
+function refreshButtonRevert() {
+  if (_history2 == null) {
+    document.getElementById('buttonRevert').className = "off";
+    document.getElementById('buttonRevert').onclick = null;
+  } else {
+    document.getElementById('buttonRevert').className = "on";
+    document.getElementById('buttonRevert').onclick = function(e) {
+      command(e.ctrlKey ? "keep" : "revert");
+    };
+  }
+}
+
+function refreshFlip() {
+  var elem = document.getElementById('cbTable');
+  for (var i = 0; i < 8; i++) {
+    elem.children[0].children[0].children[1+i].innerText =
+    elem.children[0].children[9].children[1+i].innerText = 'abcdefgh'[_flip ? 7-i : i];
+    elem.children[0].children[1+i].children[0].innerText =
+    elem.children[0].children[1+i].children[i==0?2:1].innerText = '12345678'[_flip ? i : 7-i];
+  }
+  showBoard(true);
+}
+function doFlip() {
+  _flip = !_flip;
+  refreshFlip();
+  historySave();
+}
+function refreshEditInfoGraph() {
+  document.getElementById("buttonEdit").className = _edit ? "on down" : "on";
+  document.getElementById("buttonInfo").className = _info ? "on down" : "on";
+  document.getElementById("buttonGraph").className = _graph ? "on down" : "on";
+  document.getElementById("container").className = _edit ? "edit" : _info ? "info" : _graph ? "graph" : "";
+  if (_graph) repaintGraph();
+  if (_info) updateInfo();
+  if (!_edit) setPaintPiece('S');
+}
+function doEditInfoGraph(edit, info, graph) {
+  _edit = edit ? !_edit : false;
+  _info = info ? !_info : false;
+  _graph = graph ? !_graph : false;
+  refreshEditInfoGraph();
+  historySave();
+}
+
+function showHideMenu(state, e) {
+  if (e != null) {
+    var target = e.target != null ? e.target : e.srcElement;
+    while (target != null && target.id != 'buttonMenu' && target.id != 'menu' && target.tagName != 'BODY') target = target.parentNode;
+    if (target == null) return;
+    if (!state && (target.id == 'buttonMenu' || target.id == 'menu')) return;
+  }
+  if (state) _menu = !_menu; else _menu = false;
+  document.getElementById("buttonMenu").className = _menu ? "on down" : "on";
+  document.getElementById("menu").style.display = _menu ? "" : "none";
+  if (_menu) reloadMenu();
+}
+
+function reloadMenu() {
+
+  var parent = document.getElementById("menu");
+  while(parent.firstChild) parent.removeChild(parent.firstChild);
+  var addMenuLine= function() {
+    var div = document.createElement('div');
+    div.className = "menuLine";
+    parent.appendChild(div);    
+  }  
+  var addMenuItem = function(className, text, key, enabled, func) {
+    var div = document.createElement('div');
+    div.className = "menuItem " + className;
+    if (!enabled) div.className += " disabled";
+    var span1 = document.createElement('span');
+    setElemText(span1, text);
+    div.appendChild(span1);
+    var span2 = document.createElement('span');
+    span2.className = "key";
+    if (key != null) setElemText(span2, key);
+    div.appendChild(span2);
+    if (enabled) div.onclick = func;
+    parent.appendChild(div);
+  }
+  var addMenuItemEngine = function(className, text) {
+    var div = document.createElement('div');
+    div.className = "menuItem " + className;
+    var span1 = document.createElement('span');
+    setElemText(span1, text);
+    div.appendChild(span1);
+    var span2= document.createElement('span');
+    span2.id = "buttonEnginePlus";
+    span2.onclick = function() { 
+      if (_engine != null) command("depth " + Math.min(128, _engine.depth+1));
+      showBoard(false, true);
+      if (_engine != null) setElemText(document.getElementById("buttonEngineValue"), _engine.depth);
+    }
+    div.appendChild(span2);
+    var span3= document.createElement('span');
+    span3.id = "buttonEngineValue";
+    span3.onclick = function() { 
+      if (_engine != null) command("depth 10");
+      showBoard(false, true);
+      if (_engine != null) setElemText(document.getElementById("buttonEngineValue"), _engine.depth);
+    }
+    if (_engine != null) setElemText(span3, _engine.depth);
+    div.appendChild(span3);
+    var span4= document.createElement('span');
+    span4.id = "buttonEngineMinus";
+    span4.onclick = function() { 
+      if (_engine != null) command("depth " + Math.max(0, _engine.depth-1));
+      showBoard(false, true);
+      if (_engine != null) setElemText(document.getElementById("buttonEngineValue"), _engine.depth);
+    }
+    div.appendChild(span4);
+    parent.appendChild(div);
+  }    
+
+  if (_play != null)
+    addMenuItem("menuPlay", "Stop playing against computer", null, true, function() { _play = null; showBoard(false); showHideMenu(false); historySave(); });
+  else
+    addMenuItem("menuPlay", "Play against computer", null, true, function(e) { _play = e.ctrlKey; showBoard(false); doComputerMove(); showHideMenu(false); historySave(); });
+  addMenuItemEngine("menuEngine", "Engine depth");
+  addMenuLine();
+  addMenuItem("menuKeep", "Keep changes", null, document.getElementById("buttonRevert").className == "on", function() { command("keep"); showHideMenu(false); });
+  addMenuItem("menuRevert", "Revert changes", "ESC", document.getElementById("buttonRevert").className == "on", function() { command("revert"); showHideMenu(false); });
+  addMenuLine();
+  addMenuItem("menuFlip", "Flip board", "F", true, function() { command("flip"); showHideMenu(false); });
+  addMenuItem("menuStm", "Change side to move", "S", true, function() { command("sidetomove"); showHideMenu(false); });
+  addMenuLine();
+  addMenuItem("menuStart", "Go to game start", "Home", document.getElementById("buttonBack").className == "on", function() { historyMove(-1,null,true); showHideMenu(false); });
+  addMenuItem("menuEnd", "Go to game end", "End", document.getElementById("buttonForward").className == "on", function() { historyMove(+1,null,true); showHideMenu(false); });
+  addMenuItem("menuReset", "Reset game/position", null, true, function() { command("reset"); showHideMenu(false); });
+  addMenuLine();
+  addMenuItem("menuAbout", "About...", null, true, function() {
+    window.open([location.protocol, '//', location.host, location.pathname].join('').replace("simplechessboard.html","about.html"), "_blank");
+    showHideMenu(false); });
+}
+
+// URL paramenters
+
 function getParameterByName(name, url) {
   if (!url) {
     url = window.location.href;
@@ -1385,22 +1874,30 @@ function getParameterByName(name, url) {
   if (!results || !results[2]) return "";
   return decodeURIComponent(results[2].replace(/\+/g, " "));
 }
+
+// Initialization
+
 window.onload = function() {
   document.onmousedown = onMouseDown;
   document.onmouseup = onMouseUp;
   document.onkeydown = onKeyDown;
   document.getElementById("chessboard1").oncontextmenu = function() { return false; };
   document.getElementById("chessboard1").onwheel = onWheel;
+  document.getElementById("editWrapper").onwheel = onWheel;
+  document.getElementById("editWrapper").oncontextmenu = function() { return false; };
   document.getElementById("buttonStm").onclick = function() { command("sidetomove"); };
   document.getElementById("buttonBack").onclick = function(event) { historyMove(-1,event); };
   document.getElementById("buttonForward").onclick = function(event) { historyMove(+1,event); };
   document.getElementById("buttonRefresh").onclick = function() { showBoard(false); };
   document.getElementById("buttonFlip").onclick = function() { doFlip(); };
   document.getElementById("buttonWindow").onclick = function() { command("window"); };
-  document.getElementById("buttonGraph").onclick = function() { doGraph(); };
+  document.getElementById("buttonEdit").onclick = function() { doEditInfoGraph(true,false,false); };
+  document.getElementById("buttonInfo").onclick = function() { doEditInfoGraph(false,true,false); };
+  document.getElementById("buttonGraph").onclick = function() { doEditInfoGraph(false,false,true); };
+  document.getElementById("buttonMenu").onclick = function(event) { showHideMenu(true,event); };
   document.getElementById("graph").onmouseover = function() { document.onmousemove = graphMouseMove; };
   document.getElementById("graph").onmouseout = function() { if (document.onmousemove == graphMouseMove) document.onmousemove = null; repaintGraph(); };
-  document.getElementById("graph").onwheel = onWheel;
+  document.getElementById("graph").onwheel = function(event) { onWheel(event); showGraphStatus(_historyindex); };
 
   setupInput();
   showBoard();
