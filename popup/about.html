@@ -122,18 +122,13 @@ body {
 }
 
     </style>
-<script>
-function showPage(i) {
-    for (var j = 1; j <= 3; j++) document.getElementById("page"+j).style.display = i==j ? "" : "none";
-}
-</script>
 </head>
 <body>
     <div id="content">
     <div id="menu">
-        <div class="item" onclick="showPage(1);">About</div>
-        <div class="item" onclick="showPage(2);">Help</div>
-        <div class="item" onclick="showPage(3);">Keyboard shortcuts</div>
+        <div class="item" id="button1">About</div>
+        <div class="item" id="button2">Help</div>
+        <div class="item" id="button3">Keyboard shortcuts</div>
     </div>
     <div id="image"></div>
     <div class="info" id="page1">
@@ -268,6 +263,6 @@ Note: To add, remove pieces or make illegal moves you need to use edit mode (see
 
     </div>
     </div>
-
+<script src="about.js"></script>
 </body>
 </html>
